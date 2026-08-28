@@ -1,6 +1,9 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, protocol, net } from 'electron'
-import path from 'path'
-import url from 'url'
+import path from 'node:path'
+import url, { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // Set app name
 app.name = 'Video Reminder'
