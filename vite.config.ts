@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Copy preload.cjs plugin
+// Copy preload.cjs plugin and add cloud fallback to dist-electron/main.js
 function copyPreloadPlugin() {
   return {
     name: 'copy-preload-cjs',
@@ -21,6 +21,28 @@ function copyPreloadPlugin() {
           fs.mkdirSync(destDir, { recursive: true })
         }
         fs.copyFileSync(srcPreload, destPreload)
+      }
+
+      // Patch dist-electron/main.js to safely delegate to server.js if executed by Node on Render
+      const destMain = path.join(destDir, 'main.js')
+      if (fs.existsSync(destMain)) {
+        let content = fs.readFileSync(destMain, 'utf-8')
+        content = content.replace(
+          /^import\s+\{([^}]+)\}\s+from\s+['"]electron['"];?/m,
+          (_match, imports) => {
+            const mappings = imports
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((s) => {
+                const parts = s.split(/\s+as\s+/)
+                return parts.length === 2 ? `${parts[0]}: ${parts[1]}` : s
+              })
+              .join(', ')
+            return `import _electronPkg from "electron";\nconst { ${mappings} } = (_electronPkg?.default || _electronPkg || {});\nif (typeof process !== 'undefined' && !process.versions?.electron) {\n  console.log('🌐 Render cloud environment detected: starting web server...');\n  await import('../server.js');\n  await new Promise(() => {});\n}`
+          }
+        )
+        fs.writeFileSync(destMain, content, 'utf-8')
       }
     },
   }

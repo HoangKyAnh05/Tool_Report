@@ -1,4 +1,10 @@
-import { BrowserWindow as e, Menu as t, Tray as n, app as r, dialog as i, ipcMain as a, nativeImage as o, net as s, protocol as c, shell as l } from "electron";
+import _electronPkg from "electron";
+const { BrowserWindow: e, Menu: t, Tray: n, app: r, dialog: i, ipcMain: a, nativeImage: o, net: s, protocol: c, shell: l } = (_electronPkg?.default || _electronPkg || {});
+if (typeof process !== 'undefined' && !process.versions?.electron) {
+  console.log('🌐 Render cloud environment detected: starting web server...');
+  await import('../server.js');
+  await new Promise(() => {});
+}
 import u from "node:path";
 import d from "node:fs";
 import f from "node:crypto";
