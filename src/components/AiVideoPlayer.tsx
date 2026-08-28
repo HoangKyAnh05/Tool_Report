@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { analyzeTaskCategory } from '../utils/aiVideoGenerator'
-import { Play, Pause, Volume2, VolumeX, Sparkles, RefreshCw, Film } from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX, Sparkles, RefreshCw, Film, Loader2 } from 'lucide-react'
 
 interface AiVideoPlayerProps {
   src: string
@@ -24,30 +24,29 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
   onEnded,
 }) => {
   const [useCanvasFallback, setUseCanvasFallback] = useState(false)
-  const [isPlaying, setIsPlaying] = useState(autoPlay)
-  const [isMuted, setIsMuted] = useState(false)
-  const [hasVideoError, setHasVideoError] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animFrameIdRef = useRef<number | null>(null)
   const startTimeRef = useRef<number>(Date.now())
 
-  // Process video src for Electron local files
+  // Safe source for Electron local paths
   let safeSrc = src
   if (isLocal && src && !src.startsWith('media://') && !src.startsWith('http') && !src.startsWith('blob:') && !src.startsWith('data:')) {
     safeSrc = `media:///${encodeURIComponent(src.replace(/\\/g, '/'))}`
   }
 
-  // Reset fallback on src change
   useEffect(() => {
+    setIsLoading(true)
+    setHasError(false)
     setUseCanvasFallback(false)
-    setHasVideoError(false)
   }, [src])
 
-  // Canvas 60fps Dynamic AI Video Animation Engine
+  // Canvas 60fps Dynamic Animation (Only if explicitly toggled or video cannot be reached)
   useEffect(() => {
-    if (!useCanvasFallback && !hasVideoError) return
+    if (!useCanvasFallback && !hasError) return
 
     const canvas = canvasRef.current
     if (!canvas) return
@@ -57,8 +56,8 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
     const category = analyzeTaskCategory(taskTitle || 'Nhiệm vụ')
     const colorPalettes: Record<string, { bg1: string; bg2: string; accent: string; icon: string; tag: string }> = {
       meal: { bg1: '#ea580c', bg2: '#1c0a00', accent: '#fb923c', icon: '🍱', tag: 'ĐẾN GIỜ ĂN UỐNG & NGHỈ NGƠI' },
-      exercise: { bg1: '#4f46e5', bg2: '#0b0f19', accent: '#38bdf8', icon: '🏃', tag: 'ĐẾN GIỜ VẬN ĐỘNG & GIÃN CƠ' },
-      water: { bg1: '#0284c7', bg2: '#031726', accent: '#38bdf8', icon: '💧', tag: 'ĐẾN GIỜ UỐNG NƯỚC KHOÁNG' },
+      exercise: { bg1: '#4f46e5', bg2: '#0b0f19', accent: '#38bdf8', icon: '🏃', tag: 'ĐẾN GIỜ VẬN ĐỘNG & THỂ DỤC' },
+      water: { bg1: '#0284c7', bg2: '#031726', accent: '#38bdf8', icon: '💧', tag: 'ĐẾN GIỜ UỐNG NƯỚC BÙ KHOÁNG' },
       study: { bg1: '#7c3aed', bg2: '#110c24', accent: '#c084fc', icon: '📚', tag: 'ĐẾN GIỜ TẬP TRUNG HỌC BÀI' },
       relax: { bg1: '#059669', bg2: '#011c14', accent: '#34d399', icon: '🌿', tag: 'ĐẾN GIỜ THƯ GIÃN MẮT' },
       coding: { bg1: '#0f172a', bg2: '#020617', accent: '#22c55e', icon: '💻', tag: 'ĐẾN GIỜ LẬP TRÌNH & DỰ ÁN' },
@@ -73,11 +72,11 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
 
     const render = () => {
       const elapsed = (Date.now() - startTimeRef.current) / 1000
-      const duration = 6 // 6s cycle
+      const duration = 6
       const cycleTime = elapsed % duration
       const progress = cycleTime / duration
 
-      // 1. Animated background gradient
+      // Animated background gradient
       const bgGrad = ctx.createRadialGradient(
         width / 2 + Math.sin(elapsed * 1.5) * 120,
         height / 2 + Math.cos(elapsed * 1.2) * 80,
@@ -91,7 +90,7 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
       ctx.fillStyle = bgGrad
       ctx.fillRect(0, 0, width, height)
 
-      // 2. Animated floating orbs
+      // Particles
       for (let i = 0; i < 14; i++) {
         const px = (width * 0.1 * i + Math.sin(elapsed * 1.2 + i) * 60) % width
         const py = (height * 0.15 * i + Math.cos(elapsed * 1.4 + i) * 50 + (i % 2 === 0 ? elapsed * 20 : -elapsed * 15)) % height
@@ -103,7 +102,7 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
         ctx.fill()
       }
 
-      // 3. Central Glass Card
+      // Center Card
       const cardW = width * 0.88
       const cardH = height * 0.8
       const cardX = (width - cardW) / 2
@@ -122,28 +121,28 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
       ctx.stroke()
       ctx.restore()
 
-      // 4. Large Animated Emoji
+      // Emoji
       ctx.font = `${Math.round(height * 0.18)}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       const iconY = cardY + height * 0.18 + Math.sin(elapsed * 3.5) * 6
       ctx.fillText(colors.icon, width / 2, iconY)
 
-      // 5. Header Tag
+      // Header
       ctx.font = `bold ${Math.round(height * 0.05)}px "Plus Jakarta Sans", sans-serif`
       ctx.fillStyle = colors.accent
       ctx.fillText(`⏰ ${colors.tag}`, width / 2, cardY + height * 0.35)
 
-      // 6. User Task Title
+      // Title
       ctx.font = `bold ${Math.round(height * 0.09)}px "Plus Jakarta Sans", sans-serif`
       ctx.fillStyle = '#ffffff'
-      let displayTitle = taskTitle || 'Nhắc hẹn của bạn'
+      let displayTitle = taskTitle || 'Nhắc hẹn'
       if (displayTitle.length > 28) {
         displayTitle = displayTitle.slice(0, 26) + '...'
       }
       ctx.fillText(displayTitle, width / 2, cardY + height * 0.5)
 
-      // 7. Dynamic Equalizer Wave Bars
+      // Equalizer Wave
       const barCount = 24
       const barWidth = 8
       const barGap = 6
@@ -162,7 +161,7 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
         ctx.fill()
       }
 
-      // 8. Progress Bar (6s Countdown)
+      // Progress Bar
       const progressW = (cardW - 60) * progress
       ctx.fillStyle = 'rgba(255, 255, 255, 0.12)'
       ctx.beginPath()
@@ -184,33 +183,35 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
         cancelAnimationFrame(animFrameIdRef.current)
       }
     }
-  }, [useCanvasFallback, hasVideoError, taskTitle])
-
-  const handleVideoError = () => {
-    console.warn('Video failed to load from network or local path, switching to built-in AI Dynamic Video Engine')
-    setHasVideoError(true)
-    setUseCanvasFallback(true)
-  }
+  }, [useCanvasFallback, hasError, taskTitle])
 
   return (
     <div className={`relative w-full h-full bg-black rounded-xl overflow-hidden flex items-center justify-center ${className}`}>
       {/* Switcher & Status Badge */}
-      <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-700 text-[11px]">
+      <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5 bg-slate-950/85 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-700 text-[11px] shadow-lg">
         <button
           type="button"
           onClick={() => setUseCanvasFallback(!useCanvasFallback)}
-          className={`flex items-center gap-1 font-semibold transition cursor-pointer ${
+          className={`flex items-center gap-1 font-bold transition cursor-pointer ${
             useCanvasFallback ? 'text-indigo-300' : 'text-cyan-300'
           }`}
-          title="Chuyển đổi giữa Video AI Đồ Họa và Video Clip"
+          title="Chuyển đổi chế độ video"
         >
           {useCanvasFallback ? <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> : <Film className="w-3.5 h-3.5 text-cyan-400" />}
-          <span>{useCanvasFallback ? 'Chế độ Video AI (60fps)' : 'Chế độ Clip Video'}</span>
+          <span>{useCanvasFallback ? 'Video AI Đồ Họa' : 'Video Clip Thực Tế (HD)'}</span>
         </button>
       </div>
 
-      {/* Mode A: Native Video */}
-      {!useCanvasFallback && !hasVideoError && safeSrc ? (
+      {/* Loading Spinner */}
+      {isLoading && !useCanvasFallback && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none">
+          <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mb-2" />
+          <span className="text-xs text-slate-300 font-medium">Đang tải video HD...</span>
+        </div>
+      )}
+
+      {/* Mode 1: Authentic Real HD Stock Video */}
+      {!useCanvasFallback && !hasError && safeSrc ? (
         <video
           ref={videoRef}
           key={safeSrc}
@@ -218,14 +219,19 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
           autoPlay={autoPlay}
           loop={loop}
           controls={controls}
-          muted={isMuted}
           playsInline
-          onError={handleVideoError}
+          onLoadedData={() => setIsLoading(false)}
+          onCanPlay={() => setIsLoading(false)}
+          onError={() => {
+            setIsLoading(false)
+            setHasError(true)
+            setUseCanvasFallback(true)
+          }}
           onEnded={onEnded}
           className="w-full h-full object-contain"
         />
       ) : (
-        /* Mode B: Guaranteed 60FPS AI Dynamic Canvas Video (100% working offline & online) */
+        /* Mode 2: Dynamic 60fps AI Canvas Video */
         <canvas
           ref={canvasRef}
           width={800}
