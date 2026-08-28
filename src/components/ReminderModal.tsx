@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { ReminderItem, RepeatType } from '../types'
 import { SAMPLE_VIDEOS } from '../data/sampleVideos'
 import { audioTts } from '../utils/audioTts'
+import {
+  analyzeTaskCategory,
+  findMatchingOnlineVideo,
+  generateAiDynamicVideo,
+  AiMatchedVideo,
+} from '../utils/aiVideoGenerator'
 import {
   X,
   Clock,
@@ -9,10 +15,15 @@ import {
   Volume2,
   FolderOpen,
   Play,
+  Pause,
   Sparkles,
   Check,
   Maximize2,
   Mic,
+  Loader2,
+  Wand2,
+  Globe,
+  Film,
 } from 'lucide-react'
 
 interface ReminderModalProps {
@@ -43,16 +54,22 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const [time, setTime] = useState('08:00')
   const [repeatType, setRepeatType] = useState<RepeatType>('daily')
   const [customDays, setCustomDays] = useState<number[]>([1, 2, 3, 4, 5])
-  
+
   const [videoType, setVideoType] = useState<'local' | 'sample' | 'url'>('sample')
   const [videoUrl, setVideoUrl] = useState('')
   const [videoName, setVideoName] = useState('')
-  
+
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [ttsMessage, setTtsMessage] = useState('')
   const [volume, setVolume] = useState(85)
   const [autoFullscreen, setAutoFullscreen] = useState(false)
   const [isPlayingTestVoice, setIsPlayingTestVoice] = useState(false)
+
+  // AI Video State
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false)
+  const [aiVideoInfo, setAiVideoInfo] = useState<AiMatchedVideo | null>(null)
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false)
+  const previewVideoRef = useRef<HTMLVideoElement>(null)
 
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI
 
@@ -70,6 +87,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setTtsMessage(initialData.ttsMessage)
       setVolume(initialData.volume ?? 85)
       setAutoFullscreen(initialData.autoFullscreen ?? false)
+      setAiVideoInfo(null)
     } else {
       // Default new reminder
       const now = new Date()
@@ -78,7 +96,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
         now.getMinutes()
       ).padStart(2, '0')}`
 
-      setTitle('Nhắc nhở: Đến giờ quan trọng')
+      setTitle('Nhắc nhở: Tập thể dục vươn vai')
       setDescription('')
       setTime(defaultTime)
       setRepeatType('daily')
@@ -87,13 +105,51 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setVideoUrl(SAMPLE_VIDEOS[0].url)
       setVideoName(SAMPLE_VIDEOS[0].title)
       setTtsEnabled(true)
-      setTtsMessage('Đã đến giờ rồi! Hãy mở video lên và làm theo hướng dẫn nhé.')
+      setTtsMessage('Đã đến giờ tập thể dục rồi! Bạn hãy đứng dậy vươn vai theo video nhé.')
       setVolume(85)
       setAutoFullscreen(false)
+      setAiVideoInfo(null)
     }
+    setIsPreviewPlaying(false)
   }, [initialData, isOpen])
 
   if (!isOpen) return null
+
+  // 1. Auto generate AI Motion Video (5-6s) tailored to exact task title
+  const handleGenerateAiVideo = async () => {
+    const taskName = title.trim() || 'Nhiệm vụ hàng ngày'
+    setIsGeneratingAi(true)
+    try {
+      const generated = await generateAiDynamicVideo(taskName)
+      setAiVideoInfo(generated)
+      setVideoType('url')
+      setVideoUrl(generated.url)
+      setVideoName(generated.title)
+
+      // Auto update TTS message if not customized
+      if (!ttsMessage || ttsMessage.startsWith('Đã đến giờ')) {
+        setTtsMessage(`Đã đến giờ cho nhiệm vụ: ${taskName}! Hãy mở video lên và hoàn thành nhé.`)
+      }
+    } catch (err) {
+      alert('Không thể tạo video AI, vui lòng thử lại!')
+    } finally {
+      setIsGeneratingAi(false)
+    }
+  }
+
+  // 2. Smart Match curated online video by task category (5-10s)
+  const handleMatchOnlineVideo = () => {
+    const taskName = title.trim() || 'Nhiệm vụ'
+    const matched = findMatchingOnlineVideo(taskName)
+    setAiVideoInfo(matched)
+    setVideoType('sample')
+    setVideoUrl(matched.url)
+    setVideoName(matched.title)
+
+    if (!ttsMessage || ttsMessage.startsWith('Đã đến giờ')) {
+      setTtsMessage(`Đến giờ rồi! Hãy thực hiện nhiệm vụ ${taskName} theo video nhé.`)
+    }
+  }
 
   const handleSelectLocalVideo = async () => {
     if (window.electronAPI) {
@@ -102,6 +158,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
         setVideoType('local')
         setVideoUrl(res.path)
         setVideoName(res.name)
+        setAiVideoInfo(null)
       }
     } else {
       alert('Vui lòng chọn từ thư viện mẫu hoặc nhập URL video khi chạy trên trình duyệt!')
@@ -128,6 +185,18 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       }
     } else {
       setCustomDays([...customDays, dayVal].sort())
+    }
+  }
+
+  const togglePreviewPlay = () => {
+    if (previewVideoRef.current) {
+      if (isPreviewPlaying) {
+        previewVideoRef.current.pause()
+        setIsPreviewPlaying(false)
+      } else {
+        previewVideoRef.current.play()
+        setIsPreviewPlaying(true)
+      }
     }
   }
 
@@ -159,16 +228,19 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/70">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
               <Clock className="w-4 h-4" />
             </div>
-            <h2 className="text-base font-bold text-white">
-              {initialData ? 'Chỉnh Sửa Nhắc Hẹn' : 'Tạo Nhắc Hẹn Phát Video Mới'}
-            </h2>
+            <div>
+              <h2 className="text-base font-bold text-white">
+                {initialData ? 'Chỉnh Sửa Nhắc Hẹn' : 'Tạo Nhắc Hẹn Phát Video'}
+              </h2>
+              <p className="text-[11px] text-slate-400">Tự động phát video & đọc giọng nói khi đến giờ</p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -178,27 +250,27 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
           </button>
         </div>
 
-        {/* Modal Body / Form */}
+        {/* Modal Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* Tiêu đề & Giờ hẹn */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Tiêu đề nhắc hẹn *
+                Tên nhiệm vụ / Việc cần nhắc *
               </label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="VD: Tập thể dục vươn vai, Họp dự án..."
-                className="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm"
+                placeholder="VD: Uống nước, Tập thể dục, Học tiếng Anh, Họp dự án..."
+                className="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm font-medium"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Thời gian reo *
+                Giờ nhắc hẹn *
               </label>
               <input
                 type="time"
@@ -210,79 +282,67 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             </div>
           </div>
 
-          {/* Ghi chú thêm */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              Ghi chú nội dung (Tùy chọn)
-            </label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="VD: Nhớ mang theo sổ tay, uống 1 cốc nước..."
-              className="w-full px-3.5 py-2 rounded-xl glass-input text-sm"
-            />
-          </div>
-
-          {/* Lặp lại */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              Tần suất lặp lại
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: 'daily', label: 'Hàng ngày' },
-                { id: 'once', label: 'Chỉ 1 lần' },
-                { id: 'custom_days', label: 'Chọn các thứ' },
-              ].map((r) => (
-                <button
-                  type="button"
-                  key={r.id}
-                  onClick={() => setRepeatType(r.id as RepeatType)}
-                  className={`py-2 px-3 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                    repeatType === r.id
-                      ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200'
-                      : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {r.label}
-                </button>
-              ))}
+          {/* AI Video Quick Action Banner */}
+          <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-slate-900 border border-indigo-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+              </div>
+              <div className="text-left">
+                <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>Trợ Lý Video AI Tự Động (5-10s)</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold">
+                    Mới
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  Tự động quét "{title || 'nhiệm vụ'}" để tạo video động hoặc tìm clip phù hợp
+                </div>
+              </div>
             </div>
 
-            {/* Selector for custom days */}
-            {repeatType === 'custom_days' && (
-              <div className="flex flex-wrap items-center gap-1.5 mt-2.5 p-2 rounded-xl bg-slate-950/40 border border-slate-800">
-                {DAYS_OF_WEEK.map((d) => {
-                  const isSelected = customDays.includes(d.value)
-                  return (
-                    <button
-                      type="button"
-                      key={d.value}
-                      onClick={() => toggleDay(d.value)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
-                          : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
-                      }`}
-                    >
-                      {d.label}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleGenerateAiVideo}
+                disabled={isGeneratingAi}
+                className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 transition cursor-pointer disabled:opacity-50"
+                title="Tạo video đồ họa động 6s mang tên nhiệm vụ của bạn"
+              >
+                {isGeneratingAi ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang tạo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-3.5 h-3.5" />
+                    <span>Tạo Video AI (6s)</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleMatchOnlineVideo}
+                className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                title="Khớp video mẫu trực tuyến 5-10s theo chủ đề nhiệm vụ"
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>Tìm Clip Mạng</span>
+              </button>
+            </div>
           </div>
 
-          {/* Cấu hình Video */}
-          <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">
+          {/* Video Preview & Source Selector */}
+          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Video className="w-3.5 h-3.5" />
-                <span>Video Phát Khi Đến Giờ Báo Thức</span>
+                <span>Video Phát Khi Chuông Reo (5-10s)</span>
               </label>
 
-              {/* Video source tabs */}
+              {/* Source Tabs */}
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -293,7 +353,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  Mẫu có sẵn
+                  Mẫu & AI
                 </button>
                 {isElectron && (
                   <button
@@ -322,9 +382,44 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
               </div>
             </div>
 
-            {/* Video Type: Sample Grid */}
+            {/* Video Live Preview Player */}
+            {videoUrl && (
+              <div className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-black aspect-video max-h-48 flex items-center justify-center group shadow-inner">
+                <video
+                  ref={previewVideoRef}
+                  src={videoType === 'local' ? `media:///${encodeURIComponent(videoUrl.replace(/\\/g, '/'))}` : videoUrl}
+                  loop
+                  muted
+                  playsInline
+                  onPlay={() => setIsPreviewPlaying(true)}
+                  onPause={() => setIsPreviewPlaying(false)}
+                  className="w-full h-full object-contain"
+                />
+
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={togglePreviewPlay}
+                    className="p-3 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md text-white transition cursor-pointer"
+                  >
+                    {isPreviewPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
+                  </button>
+                </div>
+
+                <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none px-1">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-black/70 backdrop-blur text-cyan-300 border border-cyan-500/30 truncate max-w-[250px]">
+                    {videoName || 'Video đã chọn'}
+                  </span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-black/70 backdrop-blur text-emerald-400">
+                    5-10s Auto-loop
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Video List Options */}
             {videoType === 'sample' && (
-              <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 pt-1">
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 {SAMPLE_VIDEOS.map((v) => {
                   const isSelected = videoUrl === v.url
                   return (
@@ -333,6 +428,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                       onClick={() => {
                         setVideoUrl(v.url)
                         setVideoName(v.title)
+                        setAiVideoInfo(null)
                       }}
                       className={`relative rounded-xl overflow-hidden border p-2 flex items-center gap-2.5 cursor-pointer transition ${
                         isSelected
@@ -343,7 +439,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                       <img
                         src={v.thumbnail}
                         alt={v.title}
-                        className="w-14 h-11 object-cover rounded-lg shrink-0"
+                        className="w-12 h-10 object-cover rounded-lg shrink-0"
                       />
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-bold text-slate-200 truncate">
@@ -354,8 +450,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                         </div>
                       </div>
                       {isSelected && (
-                        <div className="w-5 h-5 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shrink-0">
-                          <Check className="w-3 h-3 stroke-[3]" />
+                        <div className="w-4 h-4 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shrink-0">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
                         </div>
                       )}
                     </div>
@@ -364,7 +460,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
               </div>
             )}
 
-            {/* Video Type: Local File */}
+            {/* Local file picker */}
             {videoType === 'local' && (
               <div className="space-y-2 pt-1">
                 <div className="flex items-center gap-2">
@@ -377,18 +473,13 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                     <span>Chọn File Video từ máy tính</span>
                   </button>
                   <span className="text-xs text-slate-400 truncate flex-1">
-                    {videoName || 'Chưa chọn file video (.mp4, .mkv, .webm)'}
+                    {videoName || 'Chưa chọn file (.mp4, .mkv, .webm)'}
                   </span>
                 </div>
-                {videoUrl && (
-                  <div className="text-[11px] font-mono text-slate-500 truncate bg-slate-900 p-2 rounded-lg border border-slate-800">
-                    {videoUrl}
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Video Type: URL */}
+            {/* URL input */}
             {videoType === 'url' && (
               <div className="space-y-1.5 pt-1">
                 <input
@@ -396,17 +487,66 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                   value={videoUrl}
                   onChange={(e) => {
                     setVideoUrl(e.target.value)
-                    setVideoName('Video từ liên kết trực tuyến')
+                    setVideoName('Video từ liên kết URL')
                   }}
-                  placeholder="https://example.com/my-video.mp4"
+                  placeholder="https://example.com/video.mp4"
                   className="w-full px-3 py-2 rounded-xl glass-input text-xs font-mono"
                 />
               </div>
             )}
           </div>
 
-          {/* Giọng đọc nhắc nhở (Text to Speech) */}
-          <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">
+          {/* Lặp lại */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              Tần suất lặp lại
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'daily', label: 'Hàng ngày' },
+                { id: 'once', label: 'Chỉ 1 lần' },
+                { id: 'custom_days', label: 'Chọn các thứ' },
+              ].map((r) => (
+                <button
+                  type="button"
+                  key={r.id}
+                  onClick={() => setRepeatType(r.id as RepeatType)}
+                  className={`py-2 px-3 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                    repeatType === r.id
+                      ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200'
+                      : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+
+            {repeatType === 'custom_days' && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-2.5 p-2 rounded-xl bg-slate-950/40 border border-slate-800">
+                {DAYS_OF_WEEK.map((d) => {
+                  const isSelected = customDays.includes(d.value)
+                  return (
+                    <button
+                      type="button"
+                      key={d.value}
+                      onClick={() => toggleDay(d.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                          : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Giọng đọc nhắc nhở (TTS) */}
+          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Volume2 className="w-3.5 h-3.5" />
@@ -434,7 +574,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                   rows={2}
                   value={ttsMessage}
                   onChange={(e) => setTtsMessage(e.target.value)}
-                  placeholder="Nhập câu nói bạn muốn app đọc khi đến giờ (VD: Đến giờ A, B, C rồi! Hãy chuẩn bị nào)..."
+                  placeholder="Nhập câu nói bạn muốn app đọc khi đến giờ..."
                   className="w-full px-3.5 py-2 rounded-xl glass-input text-xs resize-none"
                 />
 
@@ -455,7 +595,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             )}
           </div>
 
-          {/* Âm lượng & Tùy chọn hiển thị */}
+          {/* Âm lượng & Fullscreen */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
@@ -498,7 +638,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition transform active:scale-95 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition transform active:scale-95 cursor-pointer"
             >
               {initialData ? 'Lưu Thay Đổi' : 'Tạo Nhắc Hẹn'}
             </button>
