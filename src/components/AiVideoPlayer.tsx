@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { analyzeTaskCategory } from '../utils/aiVideoGenerator'
+import { getTaskTheme } from '../utils/aiVideoGenerator'
 import { Play, Pause, Volume2, VolumeX, Sparkles, RefreshCw, Film, Loader2 } from 'lucide-react'
 
 interface AiVideoPlayerProps {
@@ -9,6 +9,8 @@ interface AiVideoPlayerProps {
   autoPlay?: boolean
   loop?: boolean
   controls?: boolean
+  volume?: number
+  isMuted?: boolean
   className?: string
   onEnded?: () => void
 }
@@ -20,6 +22,8 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
   autoPlay = true,
   loop = true,
   controls = true,
+  volume = 85,
+  isMuted = false,
   className = '',
   onEnded,
 }) => {
@@ -44,6 +48,13 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
     setUseCanvasFallback(false)
   }, [src])
 
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.volume = Math.max(0, Math.min(1, volume / 100))
+      videoRef.current.muted = !!isMuted
+    }
+  }, [volume, isMuted])
+
   // Canvas 60fps Dynamic Animation (Only if explicitly toggled or video cannot be reached)
   useEffect(() => {
     if (!useCanvasFallback && !hasError) return
@@ -53,20 +64,7 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const category = analyzeTaskCategory(taskTitle || 'Nhiệm vụ')
-    const colorPalettes: Record<string, { bg1: string; bg2: string; accent: string; icon: string; tag: string }> = {
-      swim: { bg1: '#0284c7', bg2: '#082f49', accent: '#38bdf8', icon: '🏊', tag: 'ĐẾN GIỜ ĐI BƠI RÈN LUYỆN' },
-      meal: { bg1: '#ea580c', bg2: '#1c0a00', accent: '#fb923c', icon: '🍱', tag: 'ĐẾN GIỜ ĂN UỐNG & NGHỈ NGƠI' },
-      exercise: { bg1: '#4f46e5', bg2: '#0b0f19', accent: '#38bdf8', icon: '🏃', tag: 'ĐẾN GIỜ VẬN ĐỘNG & THỂ DỤC' },
-      water: { bg1: '#0284c7', bg2: '#031726', accent: '#38bdf8', icon: '💧', tag: 'ĐẾN GIỜ UỐNG NƯỚC BÙ KHOÁNG' },
-      study: { bg1: '#7c3aed', bg2: '#110c24', accent: '#c084fc', icon: '📚', tag: 'ĐẾN GIỜ TẬP TRUNG HỌC BÀI' },
-      relax: { bg1: '#059669', bg2: '#011c14', accent: '#34d399', icon: '🌿', tag: 'ĐẾN GIỜ THƯ GIÃN MẮT' },
-      coding: { bg1: '#0f172a', bg2: '#020617', accent: '#22c55e', icon: '💻', tag: 'ĐẾN GIỜ LẬP TRÌNH & DỰ ÁN' },
-      meeting: { bg1: '#be123c', bg2: '#1f0810', accent: '#fb7185', icon: '👥', tag: 'ĐẾN GIỜ HỌP CÔNG VIỆC' },
-      sleep: { bg1: '#312e81', bg2: '#030712', accent: '#818cf8', icon: '🌙', tag: 'ĐẾN GIỜ ĐI NGỦ NGHỈ NGƠI' },
-    }
-
-    const colors = colorPalettes[category] || colorPalettes['meal']
+    const colors = getTaskTheme(taskTitle || 'Nhiệm vụ')
     const width = canvas.width
     const height = canvas.height
     startTimeRef.current = Date.now()
@@ -221,8 +219,23 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
           loop={loop}
           controls={controls}
           playsInline
-          onLoadedData={() => setIsLoading(false)}
-          onCanPlay={() => setIsLoading(false)}
+          onLoadedData={() => {
+            setIsLoading(false)
+            if (videoRef.current) {
+              videoRef.current.volume = Math.max(0, Math.min(1, volume / 100))
+              videoRef.current.muted = !!isMuted
+            }
+          }}
+          onCanPlay={() => {
+            setIsLoading(false)
+            if (videoRef.current) {
+              videoRef.current.volume = Math.max(0, Math.min(1, volume / 100))
+              videoRef.current.muted = !!isMuted
+              if (autoPlay) {
+                videoRef.current.play().catch((e) => console.warn('Autoplay caught:', e))
+              }
+            }
+          }}
           onError={() => {
             setIsLoading(false)
             setHasError(true)

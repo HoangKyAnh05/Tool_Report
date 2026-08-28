@@ -1,5 +1,6 @@
-import React from 'react'
-import { Smartphone, Monitor, Globe, QrCode, X, CheckCircle, Wifi, Bell, ShieldCheck } from 'lucide-react'
+import { Smartphone, Monitor, Globe, QrCode, X, CheckCircle, Wifi, Bell, ShieldCheck, ExternalLink } from 'lucide-react'
+import { GithubIcon } from './GithubIcon'
+import { openExternalUrl, GITHUB_PAGES_URL } from '../utils/openExternal'
 
 interface MobileGuideModalProps {
   isOpen: boolean
@@ -38,6 +39,27 @@ export const MobileGuideModal: React.FC<MobileGuideModalProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs text-slate-300">
+          {/* Quick link to GitHub Page */}
+          <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-950/60 to-purple-950/40 border border-indigo-500/30 flex items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-indigo-300 text-xs">
+                <Globe className="w-4 h-4 text-indigo-400" />
+                <span>Truy cập Web App Online (GitHub Page)</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Mở trực tiếp ứng dụng trên trình duyệt web điện thoại không cần cài đặt.
+              </p>
+            </div>
+            <button
+              onClick={() => openExternalUrl(GITHUB_PAGES_URL)}
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex items-center gap-1.5 shrink-0 transition cursor-pointer shadow-sm text-xs"
+            >
+              <GithubIcon size={14} />
+              <span>Mở Web App</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
+          </div>
+
           {/* Step 1: Kết nối LAN hoặc chạy Web */}
           <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
             <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">

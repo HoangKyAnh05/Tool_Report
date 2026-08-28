@@ -20,7 +20,10 @@ import {
   Smartphone,
   Sparkles,
   Info,
+  ExternalLink,
 } from 'lucide-react'
+import { GithubIcon } from './components/GithubIcon'
+import { openExternalUrl, GITHUB_PAGES_URL, GITHUB_REPO_URL } from './utils/openExternal'
 
 export default function App() {
   const [reminders, setReminders] = useState<ReminderItem[]>(() => loadReminders())
@@ -266,6 +269,16 @@ export default function App() {
           >
             <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
             <span>Hướng dẫn Điện Thoại</span>
+          </button>
+
+          <button
+            onClick={() => openExternalUrl(GITHUB_PAGES_URL)}
+            className="flex items-center gap-1.5 hover:text-white text-indigo-300 hover:bg-indigo-500/10 px-2 py-1 rounded transition cursor-pointer"
+            title="Mở ứng dụng trực tuyến trên GitHub Pages"
+          >
+            <GithubIcon size={14} className="text-indigo-400" />
+            <span>GitHub Page (Web)</span>
+            <ExternalLink className="w-3 h-3 text-indigo-400/70" />
           </button>
 
           <button

@@ -34,15 +34,17 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
   useEffect(() => {
     if (!reminder) return
 
-    // Trigger celebratory sound chime & TTS speech
+    // Trigger celebratory sound chime & TTS speech (only if enabled or non-local)
     const triggerAudio = async () => {
-      audioTts.playChime((reminder.volume || 85) / 100)
       if (reminder.ttsEnabled && reminder.ttsMessage) {
+        audioTts.playChime((reminder.volume || 85) / 100)
         setIsTtsSpeaking(true)
         await audioTts.speak(reminder.ttsMessage, {
           volume: reminder.volume || 85,
         })
         setIsTtsSpeaking(false)
+      } else if (reminder.videoType !== 'local') {
+        audioTts.playChime((reminder.volume || 85) / 100)
       }
     }
 
@@ -55,27 +57,12 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
       origin: { y: 0.6 },
     })
 
-    // If local file on electron, handle source
-    if (videoRef.current) {
-      videoRef.current.volume = (reminder.volume || 85) / 100
-      videoRef.current.play().catch((err) => {
-        console.warn('Autoplay prevented or video load error:', err)
-      })
-    }
-
     return () => {
       audioTts.stop()
     }
   }, [reminder])
 
   if (!reminder) return null
-
-  // Determine safe video source URL
-  let videoSrc = reminder.videoUrl
-  if (reminder.videoType === 'local') {
-    // If electron, load via custom media protocol or file URL
-    videoSrc = `media:///${encodeURIComponent(reminder.videoUrl.replace(/\\/g, '/'))}`
-  }
 
   const handleDismiss = () => {
     audioTts.stop()
@@ -88,10 +75,7 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
   }
 
   const handleToggleMute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted
-      setIsMuted(!isMuted)
-    }
+    setIsMuted(!isMuted)
   }
 
   const handleToggleFullscreen = () => {
@@ -158,11 +142,13 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
             autoPlay={true}
             loop={true}
             controls={true}
+            volume={reminder.volume ?? 85}
+            isMuted={isMuted}
             className="w-full h-full"
           />
 
           {/* Subtitle / TTS Message Overlay */}
-          {reminder.ttsMessage && (
+          {reminder.ttsEnabled && reminder.ttsMessage && (
             <div className="absolute bottom-6 left-6 right-6 p-3.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-white/15 text-center shadow-lg pointer-events-none z-30">
               <p className="text-sm sm:text-base font-bold text-emerald-300">
                 "{reminder.ttsMessage}"

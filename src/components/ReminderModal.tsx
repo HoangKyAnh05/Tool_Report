@@ -49,10 +49,14 @@ const DAYS_OF_WEEK = [
 ]
 
 const QUICK_TOPICS = [
-  { label: '🏊 Đi bơi / Bơi lội', query: 'Đến giờ đi bơi' },
+  { label: '🚽 Vệ sinh cá nhân', query: 'Đến giờ đi vệ sinh' },
+  { label: '💊 Uống thuốc', query: 'Uống thuốc đúng giờ' },
   { label: '🍱 Ăn uống / Ăn tối', query: 'Đến giờ ăn tối' },
   { label: '💧 Uống nước', query: 'Uống nước nạp năng lượng' },
   { label: '🏃 Tập thể dục', query: 'Tập thể dục giãn cơ' },
+  { label: '🏊 Đi bơi / Bơi lội', query: 'Đến giờ đi bơi' },
+  { label: '🎮 Giải trí / Game', query: 'Đến giờ giải trí chơi game' },
+  { label: '🧹 Dọn dẹp phòng', query: 'Dọn dẹp phòng ngủ gọn gàng' },
   { label: '🌙 Đi ngủ / Nghỉ ngơi', query: 'Đến giờ đi ngủ' },
   { label: '💻 Lập trình / Code', query: 'Lập trình code dự án' },
   { label: '📚 Học bài / Đọc sách', query: 'Tập trung học bài đọc sách' },
@@ -77,6 +81,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [ttsMessage, setTtsMessage] = useState('')
+  const [isTtsCustomized, setIsTtsCustomized] = useState(false)
   const [volume, setVolume] = useState(85)
   const [autoFullscreen, setAutoFullscreen] = useState(false)
   const [isPlayingTestVoice, setIsPlayingTestVoice] = useState(false)
@@ -101,6 +106,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setVideoName(initialData.videoName)
       setTtsEnabled(initialData.ttsEnabled)
       setTtsMessage(initialData.ttsMessage)
+      setIsTtsCustomized(true)
       setVolume(initialData.volume ?? 85)
       setAutoFullscreen(initialData.autoFullscreen ?? false)
       setSearchResults([])
@@ -112,7 +118,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
         now.getMinutes()
       ).padStart(2, '0')}`
 
-      const defaultTitle = 'Nhắc nhở: Đến giờ ăn tối'
+      const defaultTitle = 'Đến giờ nhắc việc'
       setTitle(defaultTitle)
       setDescription('')
       setTime(defaultTime)
@@ -120,33 +126,47 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setCustomDays([1, 2, 3, 4, 5])
       setVideoType('sample')
       setVideoUrl(CURATED_TASK_VIDEOS.meal.url)
-      setVideoName(CURATED_TASK_VIDEOS.meal.title)
+      setVideoName('Video nhắc nhở')
       setTtsEnabled(true)
-      setTtsMessage('Đã đến giờ ăn tối rồi! Bạn hãy nghỉ ngơi và thưởng thức bữa tối ngon miệng nhé.')
+      setTtsMessage(`Đã đến giờ ${defaultTitle} rồi! Bạn hãy chuẩn bị thực hiện nhé.`)
+      setIsTtsCustomized(false)
       setVolume(85)
       setAutoFullscreen(false)
       setSearchResults(searchOnlineVideos(defaultTitle))
-      setAiSuccessMessage('Đã tự động tìm và chọn video ăn tối phù hợp!')
+      setAiSuccessMessage(null)
     }
   }, [initialData, isOpen])
 
-  // Live Auto-Search as user types in the title input
+  // Live Auto-Search as user types in the title input (ONLY for sample/AI mode, never override local files)
   useEffect(() => {
     if (!isOpen) return
+    if (videoType !== 'sample') return
+
     const timer = setTimeout(() => {
       const trimmed = title.trim()
       if (trimmed.length >= 2) {
         const results = searchOnlineVideos(trimmed)
         setSearchResults(results)
         if (results.length > 0) {
-          // If first search result is strongly relevant, auto-select it
           const best = results[0]
           selectAndCacheVideo(best.url, best.title)
         }
       }
     }, 350)
     return () => clearTimeout(timer)
-  }, [title, isOpen])
+  }, [title, isOpen, videoType])
+
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle)
+    if (!isTtsCustomized) {
+      const trimmed = newTitle.trim()
+      if (trimmed) {
+        setTtsMessage(`Đã đến giờ ${trimmed} rồi! Bạn hãy thực hiện ngay nhé.`)
+      } else {
+        setTtsMessage('')
+      }
+    }
+  }
 
   if (!isOpen) return null
 
@@ -217,12 +237,13 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   // 3. Quick Topic selection
   const handleQuickTopic = async (topicQuery: string) => {
     setTitle(topicQuery)
+    setTtsMessage(`Đã đến giờ ${topicQuery} rồi! Bạn hãy chuẩn bị thực hiện nhé.`)
+    setIsTtsCustomized(false)
     const results = searchOnlineVideos(topicQuery)
     setSearchResults(results)
     if (results.length > 0) {
       await selectAndCacheVideo(results[0].url, results[0].title)
       setAiSuccessMessage(`Đã chọn chủ đề: "${topicQuery}"!`)
-      setTtsMessage(`Đã đến giờ cho ${topicQuery} rồi, bạn hãy chuẩn bị nhé.`)
     }
   }
 
@@ -239,10 +260,25 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
         setVideoType('local')
         setVideoUrl(res.path)
         setVideoName(res.name)
-        setAiSuccessMessage(`Đã chọn video từ máy tính: ${res.name}`)
+        setTtsEnabled(false)
+        setAiSuccessMessage(`🎬 Đã chọn video từ máy tính: "${res.name}". Ứng dụng sẽ phát video và âm thanh/giọng nói gốc của file này khi đến giờ.`)
       }
     } else {
-      alert('Vui lòng chọn từ thư viện mẫu hoặc nhập URL video khi chạy trên trình duyệt!')
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'video/mp4,video/webm,video/mkv,video/ogg'
+      input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0]
+        if (file) {
+          const blobUrl = URL.createObjectURL(file)
+          setVideoType('local')
+          setVideoUrl(blobUrl)
+          setVideoName(file.name)
+          setTtsEnabled(false)
+          setAiSuccessMessage(`🎬 Đã chọn video: "${file.name}". Ứng dụng sẽ phát video và âm thanh/giọng nói gốc của file này khi đến giờ.`)
+        }
+      }
+      input.click()
     }
   }
 
@@ -331,8 +367,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                 type="text"
                 required
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="VD: Đến giờ ăn tối, Uống nước, Tập thể dục, Họp dự án..."
+                onChange={(e) => handleTitleChange(e.target.value)}
+                placeholder="VD: Đến giờ đi vệ sinh, Uống thuốc, Ăn tối, Uống nước..."
                 className="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm font-semibold text-white"
               />
             </div>
@@ -494,7 +530,10 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => setVideoType('sample')}
+                  onClick={() => {
+                    setVideoType('sample')
+                    setTtsEnabled(true)
+                  }}
                   className={`text-[11px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
                     videoType === 'sample'
                       ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
@@ -503,19 +542,20 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                 >
                   Mẫu & AI
                 </button>
-                {isElectron && (
-                  <button
-                    type="button"
-                    onClick={() => setVideoType('local')}
-                    className={`text-[11px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
-                      videoType === 'local'
-                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    File từ PC
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVideoType('local')
+                    setTtsEnabled(false)
+                  }}
+                  className={`text-[11px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+                    videoType === 'local'
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  File từ PC
+                </button>
                 <button
                   type="button"
                   onClick={() => setVideoType('url')}
@@ -541,6 +581,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                   autoPlay={true}
                   loop={true}
                   controls={true}
+                  volume={volume}
                 />
               ) : (
                 <div className="text-center p-6 text-slate-500">
@@ -575,6 +616,9 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                     {videoName || 'Chưa chọn file (.mp4, .mkv, .webm)'}
                   </span>
                 </div>
+                <p className="text-[11px] text-cyan-300/90 font-medium bg-cyan-950/40 p-2 rounded-lg border border-cyan-500/20">
+                  🔊 <strong>Ghi chú:</strong> Video từ máy tính sẽ được ưu tiên phát trọn vẹn cả hình ảnh lẫn âm thanh/giọng nói gốc của video khi chuông reo.
+                </p>
               </div>
             )}
 
@@ -672,23 +716,42 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                 <textarea
                   rows={2}
                   value={ttsMessage}
-                  onChange={(e) => setTtsMessage(e.target.value)}
+                  onChange={(e) => {
+                    setTtsMessage(e.target.value)
+                    setIsTtsCustomized(true)
+                  }}
                   placeholder="Nhập câu nói bạn muốn app đọc khi đến giờ..."
                   className="w-full px-3.5 py-2 rounded-xl glass-input text-xs resize-none text-white"
                 />
 
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-slate-400">
-                    Ứng dụng sẽ tự đọc câu này kết hợp cùng âm thanh chuông.
+                    {isTtsCustomized ? 'Đang dùng câu tùy chỉnh của bạn' : 'Tự động đồng bộ theo tên việc'}
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleTestVoice}
-                    className="px-3 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
-                  >
-                    <Mic className="w-3 h-3" />
-                    <span>{isPlayingTestVoice ? 'Đang đọc...' : 'Nghe thử giọng'}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {isTtsCustomized && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsTtsCustomized(false)
+                          const trimmed = title.trim() || 'nhắc hẹn'
+                          setTtsMessage(`Đã đến giờ ${trimmed} rồi! Bạn hãy thực hiện ngay nhé.`)
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition cursor-pointer"
+                        title="Đặt lại câu đọc tự động theo tên tiêu đề"
+                      >
+                        🔄 Tự động theo tên
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleTestVoice}
+                      className="px-3 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Mic className="w-3 h-3" />
+                      <span>{isPlayingTestVoice ? 'Đang đọc...' : 'Nghe thử giọng'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

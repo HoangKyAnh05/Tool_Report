@@ -13,6 +13,7 @@ interface Window {
     dismissAlarm: () => Promise<boolean>
     openVideoDialog: () => Promise<{ path: string; name: string } | null>
     cacheRemoteVideo: (url: string) => Promise<string>
+    openExternal: (url: string) => Promise<boolean>
     isPackaged: () => Promise<boolean>
     onTestTrigger: (callback: () => void) => () => void
   }

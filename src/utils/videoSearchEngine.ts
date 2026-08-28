@@ -158,9 +158,61 @@ export const AUTHENTIC_ONLINE_VIDEOS: Array<{
     category: 'Thư giãn',
   },
 
+  // 🚽 VỆ SINH CÁ NHÂN / TOILET / TẮM / ĐÁNH RĂNG
+  {
+    keywords: ['vệ sinh', 'đi vệ sinh', 'đi ỉa', 'ỉa', 'đi tè', 'tè', 'toilet', 'wc', 'tắm', 'gội', 'đánh răng', 'rửa mặt', 'skincare', 'rửa tay', 'nhà vệ sinh'],
+    title: 'Vệ Sinh Cá Nhân & Chăm Sóc Bản Thân (HD)',
+    url: 'https://cdn.pixabay.com/video/2020/07/04/43831-435738876_tiny.mp4',
+    thumbnail: 'https://images.pexels.com/photos/3738349/pexels-photo-3738349.jpeg?auto=compress&cs=tinysrgb&w=400',
+    category: 'Vệ sinh',
+  },
+  {
+    keywords: ['tắm', 'gội', 'rửa mặt', 'nước mát'],
+    title: 'Dòng Nước Trong Lành Mát Mẻ Thư Giãn (HD)',
+    url: 'https://cdn.pixabay.com/video/2021/08/04/83875-584732152_tiny.mp4',
+    thumbnail: 'https://images.pexels.com/photos/6621472/pexels-photo-6621472.jpeg?auto=compress&cs=tinysrgb&w=400',
+    category: 'Vệ sinh',
+  },
+
+  // 💊 UỐNG THUỐC / SỨC KHỎE / Y TẾ
+  {
+    keywords: ['thuốc', 'uống thuốc', 'khám', 'bệnh', 'vitamin', 'y tế', 'bác sĩ', 'tiêm', 'dược', 'bổ sung'],
+    title: 'Uống Thuốc Đúng Giờ & Bảo Vệ Sức Khỏe (HD)',
+    url: 'https://cdn.pixabay.com/video/2021/08/04/83875-584732152_tiny.mp4',
+    thumbnail: 'https://images.pexels.com/photos/3683074/pexels-photo-3683074.jpeg?auto=compress&cs=tinysrgb&w=400',
+    category: 'Sức khỏe',
+  },
+
+  // 🎮 GAME / GIẢI TRÍ
+  {
+    keywords: ['game', 'chơi game', 'giải trí', 'xem phim', 'youtube', 'tiktok', 'lướt web', 'stream', 'play'],
+    title: 'Không Gian Giải Trí Gaming Đèn Neon Sống Động (HD)',
+    url: 'https://cdn.pixabay.com/video/2021/04/12/70889-536248386_tiny.mp4',
+    thumbnail: 'https://images.pexels.com/photos/3165335/pexels-photo-3165335.jpeg?auto=compress&cs=tinysrgb&w=400',
+    category: 'Giải trí',
+  },
+
+  // 🐾 THÚ CƯNG / CHĂM SÓC CHÓ MÈO
+  {
+    keywords: ['mèo', 'chó', 'thú cưng', 'pet', 'dắt chó', 'cho mèo', 'cho chó'],
+    title: 'Chăm Sóc & Vui Chơi Cùng Thú Cưng Đáng Yêu (HD)',
+    url: 'https://cdn.pixabay.com/video/2020/05/01/37397-414841935_tiny.mp4',
+    thumbnail: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=400',
+    category: 'Thú cưng',
+  },
+
+  // 🛒 MUA SẮM / ĐI CHỢ
+  {
+    keywords: ['mua sắm', 'đi chợ', 'siêu thị', 'shopping', 'mua đồ'],
+    title: 'Đi Mua Sắm & Chọn Lựa Hàng Hóa Siêu Thị (HD)',
+    url: 'https://cdn.pixabay.com/video/2020/05/01/37397-414841935_tiny.mp4',
+    thumbnail: 'https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=400',
+    category: 'Mua sắm',
+  },
+
   // 🧹 DỌN DẸP / NHÀ CỬA
   {
-    keywords: ['dọn', 'dọn dẹp', 'dọn phòng', 'quét nhà', 'vệ sinh', 'clean', 'nhà cửa'],
+    keywords: ['dọn', 'dọn dẹp', 'dọn phòng', 'quét nhà', 'vệ sinh phòng', 'lau nhà', 'rửa bát', 'giặt đồ', 'phơi đồ', 'clean', 'nhà cửa'],
     title: 'Dọn Dẹp Không Gian Nhà Cửa Gọn Gàng (HD)',
     url: 'https://cdn.pixabay.com/video/2020/05/01/37397-414841935_tiny.mp4',
     thumbnail: 'https://images.pexels.com/photos/4099467/pexels-photo-4099467.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -177,11 +229,13 @@ export function searchOnlineVideos(query: string): SearchVideoResult[] {
     let score = 0
     for (const kw of video.keywords) {
       if (lowerQuery.includes(kw)) {
-        score += 15
+        score += 25
       }
       for (const word of words) {
-        if (kw.includes(word) || word.includes(kw)) {
-          score += 5
+        if (kw === word) {
+          score += 15
+        } else if (kw.includes(word) || word.includes(kw)) {
+          score += 6
         }
       }
     }

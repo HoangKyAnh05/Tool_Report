@@ -1,9 +1,7 @@
 // Text-to-Speech and Web Audio Alarm Chime
-
 class AudioTtsManager {
   private synth: SpeechSynthesis | null = null
   private voices: SpeechSynthesisVoice[] = []
-  private audioCtx: AudioContext | null = null
   private isSpeaking = false
 
   constructor() {
@@ -28,32 +26,58 @@ class AudioTtsManager {
     return this.voices
   }
 
-  // Play pleasant wake up chime using Web Audio API
-  public playChime(volume = 0.8) {
+  // Play pleasant, rich alarm chime with harmonics
+  public playChime(volume = 0.85) {
     try {
       const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       if (!AudioContextClass) return
 
       const ctx = new AudioContextClass()
+      if (ctx.state === 'suspended') {
+        ctx.resume()
+      }
+
       const now = ctx.currentTime
+      const safeVol = Math.max(0.1, Math.min(1.0, volume))
 
-      const notes = [523.25, 659.25, 783.99, 1046.50] // C5, E5, G5, C6
-      notes.forEach((freq, idx) => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
+      // Melodic arpeggio chord progression: F5 -> A5 -> C6 -> F6
+      const chord = [
+        { freq: 698.46, time: 0.0, dur: 0.8 }, // F5
+        { freq: 880.00, time: 0.15, dur: 0.9 }, // A5
+        { freq: 1046.50, time: 0.30, dur: 1.1 }, // C6
+        { freq: 1396.91, time: 0.45, dur: 1.5 }, // F6
+      ]
 
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(freq, now + idx * 0.12)
+      chord.forEach(({ freq, time, dur }) => {
+        // Fundamental tone
+        const osc1 = ctx.createOscillator()
+        const gain1 = ctx.createGain()
+        osc1.type = 'sine'
+        osc1.frequency.setValueAtTime(freq, now + time)
 
-        gain.gain.setValueAtTime(0, now + idx * 0.12)
-        gain.gain.linearRampToValueAtTime(volume * 0.3, now + idx * 0.12 + 0.04)
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.12 + 0.6)
+        gain1.gain.setValueAtTime(0.001, now + time)
+        gain1.gain.linearRampToValueAtTime(safeVol * 0.4, now + time + 0.03)
+        gain1.gain.exponentialRampToValueAtTime(0.0001, now + time + dur)
 
-        osc.connect(gain)
-        gain.connect(ctx.destination)
+        osc1.connect(gain1)
+        gain1.connect(ctx.destination)
+        osc1.start(now + time)
+        osc1.stop(now + time + dur)
 
-        osc.start(now + idx * 0.12)
-        osc.stop(now + idx * 0.12 + 0.6)
+        // Harmonic overtone for rich metallic chime feel
+        const osc2 = ctx.createOscillator()
+        const gain2 = ctx.createGain()
+        osc2.type = 'triangle'
+        osc2.frequency.setValueAtTime(freq * 2, now + time)
+
+        gain2.gain.setValueAtTime(0.001, now + time)
+        gain2.gain.linearRampToValueAtTime(safeVol * 0.12, now + time + 0.02)
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + time + dur * 0.6)
+
+        osc2.connect(gain2)
+        gain2.connect(ctx.destination)
+        osc2.start(now + time)
+        osc2.stop(now + time + dur * 0.6)
       })
     } catch (e) {
       console.warn('AudioContext chime error:', e)
@@ -70,24 +94,48 @@ class AudioTtsManager {
 
       this.stop() // Cancel any ongoing speech
 
-      const utterance = new SpeechSynthesisUtterance(message)
+      // Clean message string for speech
+      const cleanedMessage = message
+        .replace(/["“”«»]/g, '')
+        .replace(/[\n\r]+/g, '. ')
+        .trim()
+
+      const utterance = new SpeechSynthesisUtterance(cleanedMessage)
       utterance.volume = (options?.volume ?? 100) / 100
-      utterance.rate = options?.rate ?? 1.0
+      utterance.rate = options?.rate ?? 0.95
       utterance.pitch = options?.pitch ?? 1.0
 
       const voices = this.getVoices()
-      // Try to find Vietnamese voice or match by voiceURI
-      let selectedVoice = voices.find((v) => v.voiceURI === options?.voiceURI)
-      if (!selectedVoice) {
-        selectedVoice = voices.find((v) => v.lang.toLowerCase().includes('vi') || v.name.toLowerCase().includes('vietnam'))
+      // Try to find matching voice
+      let selectedVoice: SpeechSynthesisVoice | undefined
+
+      if (options?.voiceURI) {
+        selectedVoice = voices.find((v) => v.voiceURI === options.voiceURI)
       }
+
       if (!selectedVoice) {
-        // Fallback to default or any available voice
+        // Priority 1: Vietnamese voice (vi-VN, HoaiMy, Nam, Google Tiếng Việt)
+        selectedVoice = voices.find(
+          (v) =>
+            v.lang.toLowerCase().startsWith('vi') ||
+            v.lang.toLowerCase().includes('vietnam') ||
+            v.name.toLowerCase().includes('vietnam') ||
+            v.name.toLowerCase().includes('tiếng việt') ||
+            v.name.toLowerCase().includes('hoaimy') ||
+            v.name.toLowerCase().includes('nam')
+        )
+      }
+
+      if (!selectedVoice) {
+        // Priority 2: Default or first available voice
         selectedVoice = voices.find((v) => v.default) || voices[0]
       }
 
       if (selectedVoice) {
         utterance.voice = selectedVoice
+        utterance.lang = selectedVoice.lang || 'vi-VN'
+      } else {
+        utterance.lang = 'vi-VN'
       }
 
       utterance.onend = () => {
@@ -108,7 +156,11 @@ class AudioTtsManager {
 
   public stop() {
     if (this.synth) {
-      this.synth.cancel()
+      try {
+        this.synth.cancel()
+      } catch (e) {
+        // ignore
+      }
     }
     this.isSpeaking = false
   }

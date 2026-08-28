@@ -29,6 +29,7 @@ function copyPreloadPlugin() {
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [
     tailwindcss(),
     react(),
@@ -38,7 +39,6 @@ export default defineConfig({
       },
     ]),
     copyPreloadPlugin(),
-    renderer(),
   ],
   resolve: {
     alias: {

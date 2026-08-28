@@ -55,41 +55,144 @@ export const CURATED_TASK_VIDEOS: Record<string, { url: string; thumbnail: strin
   },
 }
 
+export interface TaskTheme {
+  bg1: string
+  bg2: string
+  accent: string
+  icon: string
+  tag: string
+}
+
 // 1. Analyze task category from task title
 export function analyzeTaskCategory(taskTitle: string): string {
-  const lower = taskTitle.toLowerCase()
+  const lower = (taskTitle || '').toLowerCase().trim()
 
+  if (/vệ sinh|đi vệ sinh|đi ỉa|ỉa|đi tè|tè|toilet|wc|tắm|gội|đánh răng|rửa mặt|skincare|rửa tay|nhà vệ sinh/.test(lower)) {
+    return 'hygiene'
+  }
+  if (/thuốc|uống thuốc|khám|bệnh|vitamin|y tế|bác sĩ|tiêm|dược|bổ sung/.test(lower)) {
+    return 'medicine'
+  }
+  if (/mèo|chó|thú cưng|pet|dắt chó|cho mèo|cho chó/.test(lower)) {
+    return 'pet'
+  }
+  if (/game|chơi game|giải trí|xem phim|youtube|tiktok|lướt web|stream|play/.test(lower)) {
+    return 'entertainment'
+  }
+  if (/dọn|dọn dẹp|quét nhà|lau nhà|rửa bát|giặt đồ|phơi đồ|vệ sinh phòng|lau bàn/.test(lower)) {
+    return 'chore'
+  }
+  if (/mua sắm|đi chợ|siêu thị|shopping|mua đồ/.test(lower)) {
+    return 'shopping'
+  }
+  if (/gọi điện|gọi|alo|nhắn tin|liên lạc|bấm máy|gọi về/.test(lower)) {
+    return 'call'
+  }
+  if (/cà phê|cafe|coffee|uống trà|trà sữa|thưởng trà|tea/.test(lower)) {
+    return 'coffee'
+  }
   if (/bơi|đi bơi|hồ bơi|bể bơi|swim|swimming|lặn/.test(lower)) {
     return 'swim'
   }
-  if (/ăn|cơm|bữa|tối|trưa|sáng|nấu|food|dinner|lunch|breakfast|cà phê|coffee|trà/.test(lower)) {
+  if (/ăn tối|ăn cơm|ăn trưa|ăn sáng|bữa ăn|nấu ăn|ăn uống|thức ăn|ăn nhẹ|dinner|lunch|breakfast|food|nấu nướng|bữa tối|bữa trưa|bữa sáng/.test(lower)) {
     return 'meal'
   }
-  if (/ngủ|nghỉ|nghỉ trưa|sleep|nap|bed|thư giãn|thiền|nhắm mắt/.test(lower)) {
+  if (/đi ngủ|ngủ|nghỉ trưa|sleep|nap|lên giường|nghỉ ngơi ban đêm/.test(lower)) {
     return 'sleep'
   }
-  if (/uống nước|nước|bù nước|water|hydrat|khát/.test(lower)) {
+  if (/uống nước|nước lọc|bù nước|water|hydrat|khát nước|cốc nước/.test(lower)) {
     return 'water'
   }
-  if (/học|đọc sách|ôn bài|tiếng anh|reading|study|lesson|sách|bài tập/.test(lower)) {
+  if (/học|đọc sách|ôn bài|tiếng anh|reading|study|lesson|sách|bài tập|thi cử|làm bài/.test(lower)) {
     return 'study'
   }
-  if (/code|lập trình|dev|fix bug|python|javascript|viết code|debug|it/.test(lower)) {
+  if (/code|lập trình|dev|fix bug|python|javascript|viết code|debug|it|phần mềm|server|làm web/.test(lower)) {
     return 'coding'
   }
-  if (/họp|meeting|gặp|báo cáo|thảo luận|khách hàng|trao đổi|call/.test(lower)) {
+  if (/họp|meeting|gặp mặt|báo cáo|thảo luận|khách hàng|trao đổi|call|zoom|hội ý/.test(lower)) {
     return 'meeting'
   }
-  if (/tập|thể dục|vận động|giãn cơ|gym|chạy|workout|yoga|đứng dậy|vươn vai|đi bộ/.test(lower)) {
+  if (/tập|thể dục|vận động|giãn cơ|gym|chạy bộ|workout|yoga|vươn vai|đi bộ|cardio|thể thao/.test(lower)) {
     return 'exercise'
   }
-  return 'meal'
+  if (/thư giãn|thiền|nhắm mắt|ngắm cảnh|hít thở|relax|sóng biển/.test(lower)) {
+    return 'relax'
+  }
+
+  return 'general'
+}
+
+export function getTaskTheme(taskTitle: string): TaskTheme {
+  const category = analyzeTaskCategory(taskTitle)
+  const lower = (taskTitle || '').toLowerCase()
+
+  let icon = '🔔'
+  if (category === 'hygiene') {
+    icon = /tắm|gội/.test(lower) ? '🚿' : /đánh răng/.test(lower) ? '🪥' : /rửa mặt|skincare/.test(lower) ? '🧼' : '🚽'
+  } else if (category === 'medicine') {
+    icon = '💊'
+  } else if (category === 'pet') {
+    icon = '🐾'
+  } else if (category === 'entertainment') {
+    icon = '🎮'
+  } else if (category === 'chore') {
+    icon = '🧹'
+  } else if (category === 'shopping') {
+    icon = '🛒'
+  } else if (category === 'call') {
+    icon = '📞'
+  } else if (category === 'coffee') {
+    icon = '☕'
+  } else if (category === 'swim') {
+    icon = '🏊'
+  } else if (category === 'meal') {
+    icon = '🍱'
+  } else if (category === 'sleep') {
+    icon = '🌙'
+  } else if (category === 'water') {
+    icon = '💧'
+  } else if (category === 'study') {
+    icon = '📚'
+  } else if (category === 'coding') {
+    icon = '💻'
+  } else if (category === 'meeting') {
+    icon = '👥'
+  } else if (category === 'exercise') {
+    icon = '🏃'
+  } else if (category === 'relax') {
+    icon = '🌿'
+  } else {
+    icon = '⏰'
+  }
+
+  const themes: Record<string, TaskTheme> = {
+    hygiene: { bg1: '#0891b2', bg2: '#082f49', accent: '#38bdf8', icon, tag: 'ĐẾN GIỜ VỆ SINH CÁ NHÂN' },
+    medicine: { bg1: '#dc2626', bg2: '#450a0a', accent: '#f87171', icon, tag: 'ĐẾN GIỜ UỐNG THUỐC & SỨC KHỎE' },
+    pet: { bg1: '#d97706', bg2: '#1e1102', accent: '#fbbf24', icon, tag: 'CHĂM SÓC THÚ CƯNG' },
+    entertainment: { bg1: '#7c3aed', bg2: '#13082b', accent: '#a78bfa', icon, tag: 'ĐẾN GIỜ GIẢI TRÍ & THƯ GIÃN' },
+    chore: { bg1: '#0d9488', bg2: '#021815', accent: '#2dd4bf', icon, tag: 'ĐẾN GIỜ DỌN DẸP NHÀ CỬA' },
+    shopping: { bg1: '#db2777', bg2: '#1f0410', accent: '#f472b6', icon, tag: 'ĐẾN GIỜ MUA SẮM & ĐI CHỢ' },
+    call: { bg1: '#059669', bg2: '#021e14', accent: '#34d399', icon, tag: 'ĐẾN GIỜ GỌI ĐIỆN & LIÊN LẠC' },
+    coffee: { bg1: '#b45309', bg2: '#271202', accent: '#f59e0b', icon, tag: 'ĐẾN GIỜ THƯỞNG THỨC ĐỒ UỐNG' },
+    swim: { bg1: '#0284c7', bg2: '#082f49', accent: '#38bdf8', icon, tag: 'ĐẾN GIỜ ĐI BƠI RÈN LUYỆN' },
+    meal: { bg1: '#ea580c', bg2: '#1c0a00', accent: '#fb923c', icon, tag: 'ĐẾN GIỜ ĂN UỐNG & NGHỈ NGƠI' },
+    exercise: { bg1: '#4f46e5', bg2: '#0b0f19', accent: '#38bdf8', icon, tag: 'ĐẾN GIỜ VẬN ĐỘNG & THỂ DỤC' },
+    water: { bg1: '#0284c7', bg2: '#031726', accent: '#38bdf8', icon, tag: 'ĐẾN GIỜ UỐNG NƯỚC BỔ SUNG' },
+    study: { bg1: '#7c3aed', bg2: '#110c24', accent: '#c084fc', icon, tag: 'ĐẾN GIỜ TẬP TRUNG HỌC TẬP' },
+    relax: { bg1: '#059669', bg2: '#011c14', accent: '#34d399', icon, tag: 'ĐẾN GIỜ THƯ GIÃN MẮT & HÍT THỞ' },
+    coding: { bg1: '#0f172a', bg2: '#020617', accent: '#22c55e', icon, tag: 'ĐẾN GIỜ LẬP TRÌNH & DỰ ÁN' },
+    meeting: { bg1: '#be123c', bg2: '#1f0810', accent: '#fb7185', icon, tag: 'ĐẾN GIỜ HỌP & BÁO CÁO' },
+    sleep: { bg1: '#312e81', bg2: '#030712', accent: '#818cf8', icon, tag: 'ĐẾN GIỜ ĐI NGỦ & NGHỈ NGƠI' },
+    general: { bg1: '#4338ca', bg2: '#090d16', accent: '#6366f1', icon, tag: 'ĐẾN GIỜ THỰC HIỆN NHIỆM VỤ' },
+  }
+
+  return themes[category] || themes.general
 }
 
 // 2. Smart Match Online video with instant working MP4
 export function findMatchingOnlineVideo(taskTitle: string): AiMatchedVideo {
   const category = analyzeTaskCategory(taskTitle)
-  const matched = CURATED_TASK_VIDEOS[category] || CURATED_TASK_VIDEOS['meal']
+  const matched = CURATED_TASK_VIDEOS[category] || CURATED_TASK_VIDEOS['relax'] || CURATED_TASK_VIDEOS['meal']
 
   return {
     id: `matched_${category}_${Date.now()}`,
@@ -157,21 +260,8 @@ export async function generateAiDynamicVideo(taskTitle: string): Promise<AiMatch
       const totalFrames = durationSeconds * fps
       let currentFrame = 0
 
-      // Color scheme based on category
-      const category = analyzeTaskCategory(taskTitle)
-      const colorPalettes: Record<string, { bg1: string; bg2: string; accent: string; icon: string; tag: string }> = {
-        swim: { bg1: '#0284c7', bg2: '#082f49', accent: '#38bdf8', icon: '🏊', tag: 'ĐẾN GIỜ ĐI BƠI RÈN LUYỆN' },
-        meal: { bg1: '#ea580c', bg2: '#1c0a00', accent: '#fb923c', icon: '🍱', tag: 'ĐẾN GIỜ ĂN UỐNG & NGHỈ NGƠI' },
-        exercise: { bg1: '#4f46e5', bg2: '#0b0f19', accent: '#38bdf8', icon: '🏃', tag: 'ĐẾN GIỜ VẬN ĐỘNG & GIÃN CƠ' },
-        water: { bg1: '#0284c7', bg2: '#031726', accent: '#38bdf8', icon: '💧', tag: 'ĐẾN GIỜ UỐNG NƯỚC BỔ SUNG' },
-        study: { bg1: '#7c3aed', bg2: '#110c24', accent: '#c084fc', icon: '📚', tag: 'ĐẾN GIỜ TẬP TRUNG HỌC TẬP' },
-        relax: { bg1: '#059669', bg2: '#011c14', accent: '#34d399', icon: '🌿', tag: 'ĐẾN GIỜ THƯ GIÃN MẮT & HÍT THỞ' },
-        coding: { bg1: '#0f172a', bg2: '#020617', accent: '#22c55e', icon: '💻', tag: 'ĐẾN GIỜ LẬP TRÌNH & DỰ ÁN' },
-        meeting: { bg1: '#be123c', bg2: '#1f0810', accent: '#fb7185', icon: '👥', tag: 'ĐẾN GIỜ HỌP & BÁO CÁO' },
-        sleep: { bg1: '#312e81', bg2: '#030712', accent: '#818cf8', icon: '🌙', tag: 'ĐẾN GIỜ ĐI NGỦ & NGHỈ NGƠI' },
-      }
-
-      const colors = colorPalettes[category] || colorPalettes['meal']
+      // Get accurate colors and icon based on task title
+      const colors = getTaskTheme(taskTitle)
 
       function renderFrame() {
         if (currentFrame >= totalFrames) {

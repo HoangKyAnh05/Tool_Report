@@ -1,5 +1,6 @@
-import React from 'react'
-import { BellRing, Minus, Square, X, RefreshCw, RotateCcw, Smartphone, Sparkles } from 'lucide-react'
+import { BellRing, Minus, Square, X, RefreshCw, RotateCcw, Smartphone } from 'lucide-react'
+import { GithubIcon } from './GithubIcon'
+import { openExternalUrl, GITHUB_PAGES_URL, GITHUB_REPO_URL } from '../utils/openExternal'
 
 interface TitleBarProps {
   onOpenSettings: () => void
@@ -60,6 +61,16 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onOpenSettings, onOpenMobile
 
       {/* Quick Actions & Window Controls */}
       <div className="flex items-center gap-1.5 no-drag">
+        {/* GitHub Pages Web App Button */}
+        <button
+          onClick={() => openExternalUrl(GITHUB_PAGES_URL)}
+          className="text-xs px-2.5 py-1 rounded-md bg-gradient-to-r from-slate-800 to-indigo-950/80 hover:from-slate-700 hover:to-indigo-900/90 text-slate-200 hover:text-white border border-indigo-500/30 hover:border-indigo-400 flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+          title="Mở ứng dụng trên GitHub Pages (Trình duyệt Web)"
+        >
+          <GithubIcon size={14} className="text-indigo-400 group-hover:text-indigo-300" />
+          <span className="text-[11px] font-semibold text-indigo-200 hidden sm:inline">GitHub Page</span>
+        </button>
+
         {/* Restart & Reload Buttons */}
         <button
           onClick={handleReload}
@@ -81,7 +92,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onOpenSettings, onOpenMobile
 
         <button
           onClick={onOpenMobileGuide}
-          className="text-xs px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 flex items-center gap-1.5 transition cursor-pointer ml-1"
+          className="text-xs px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 flex items-center gap-1.5 transition cursor-pointer ml-0.5"
           title="Xem hướng dẫn cài đặt & dùng trên điện thoại"
         >
           <Smartphone className="w-3 h-3" />

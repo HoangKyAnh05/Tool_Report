@@ -11,7 +11,11 @@ import {
   Sparkles,
   Shield,
   Monitor,
+  ExternalLink,
+  Globe,
 } from 'lucide-react'
+import { GithubIcon } from './GithubIcon'
+import { openExternalUrl, GITHUB_REPO_URL, GITHUB_PAGES_URL } from '../utils/openExternal'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -205,6 +209,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="hidden"
                 />
               </label>
+            </div>
+          </div>
+
+          {/* GitHub Page & Source Code */}
+          <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                <GithubIcon size={14} className="text-indigo-400" />
+                <span>Mã nguồn & GitHub Page</span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">HoangKyAnh05/Tool_Report</span>
+            </div>
+
+            <p className="text-slate-400">
+              Truy cập trang dự án trên GitHub để cập nhật phiên bản mới, xem hướng dẫn chi tiết hoặc đóng góp tính năng.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => openExternalUrl(GITHUB_REPO_URL)}
+                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium flex items-center gap-2 transition cursor-pointer hover:border-slate-500"
+              >
+                <GithubIcon size={15} />
+                <span>Mở GitHub Repository</span>
+                <ExternalLink className="w-3 h-3 text-slate-400" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openExternalUrl(GITHUB_PAGES_URL)}
+                className="px-3.5 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-medium flex items-center gap-2 transition cursor-pointer"
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>Mở GitHub Page Web</span>
+                <ExternalLink className="w-3 h-3 text-indigo-400" />
+              </button>
             </div>
           </div>
         </div>

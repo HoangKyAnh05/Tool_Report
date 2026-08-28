@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, protocol, net } from 'electron'
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, protocol, net, shell } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import crypto from 'node:crypto'
@@ -88,6 +88,14 @@ function createMainWindow() {
     }
   })
 
+  // Handle external links to open in default browser
+  mainWindow.webContents.setWindowOpenHandler(({ url: targetUrl }) => {
+    if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+      shell.openExternal(targetUrl)
+    }
+    return { action: 'deny' }
+  })
+
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
     mainWindow?.focus()
@@ -155,6 +163,12 @@ function setupSystemTray() {
             mainWindow.show()
             mainWindow.webContents.send('alarm:test-trigger')
           }
+        },
+      },
+      {
+        label: '🌐 Mở GitHub Page (Chạy App trên Web)',
+        click: () => {
+          shell.openExternal('https://hoangkyanh05.github.io/Tool_Report/')
         },
       },
       { type: 'separator' },
@@ -321,6 +335,15 @@ function setupIPC() {
       }
     }
     return null
+  })
+
+  // Open external links safely
+  ipcMain.handle('shell:open-external', (_event, targetUrl: string) => {
+    if (targetUrl && (targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {
+      shell.openExternal(targetUrl)
+      return true
+    }
+    return false
   })
 
   // Check if packaged

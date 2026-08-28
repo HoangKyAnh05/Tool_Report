@@ -9,6 +9,7 @@ const electronAPI = {
   wakeUpAlarm: (options: { autoFullscreen: boolean }) => ipcRenderer.invoke('alarm:wake-up', options),
   dismissAlarm: () => ipcRenderer.invoke('alarm:dismiss'),
   openVideoDialog: () => ipcRenderer.invoke('dialog:open-video'),
+  openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
   isPackaged: () => ipcRenderer.invoke('app:is-packaged'),
   onTestTrigger: (callback: () => void) => {
     const handler = () => callback()
