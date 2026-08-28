@@ -31,8 +31,14 @@ import {
   Search,
   Image as ImageIcon,
   Music,
+  RefreshCw,
+  Link as LinkIcon,
 } from 'lucide-react'
-import { getThemeImageForTitle } from '../utils/imageThemeEngine'
+import {
+  getThemeImageForTitle,
+  getNextThemeImage,
+  searchOnlineImages,
+} from '../utils/imageThemeEngine'
 
 interface ReminderModalProps {
   isOpen: boolean
@@ -96,6 +102,37 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const [isSearchingOnline, setIsSearchingOnline] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchVideoResult[]>([])
   const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null)
+
+  // Image Cycling & Online Search States
+  const [isChangingImage, setIsChangingImage] = useState(false)
+  const [showImageSearch, setShowImageSearch] = useState(false)
+  const [imageSearchQuery, setImageSearchQuery] = useState('')
+  const [isSearchingImages, setIsSearchingImages] = useState(false)
+  const [onlineImageResults, setOnlineImageResults] = useState<Array<{ title: string; imageUrl: string; source: string }>>([])
+  const [showUrlInput, setShowUrlInput] = useState(false)
+  const [customUrlInput, setCustomUrlInput] = useState('')
+
+  const handleCycleImage = () => {
+    setIsChangingImage(true)
+    const current = imageUrl || getThemeImageForTitle(title).imageUrl
+    const next = getNextThemeImage(title, current)
+    setImageUrl(next.imageUrl)
+    setAiSuccessMessage(`🖼️ Đã đổi sang ảnh: "${next.title}" (${next.category})`)
+    setTimeout(() => setIsChangingImage(false), 200)
+  }
+
+  const handleSearchOnlineImages = async (customQuery?: string) => {
+    const q = (customQuery || imageSearchQuery || title || 'điện thoại').trim()
+    setIsSearchingImages(true)
+    try {
+      const results = await searchOnlineImages(q)
+      setOnlineImageResults(results)
+    } catch (e) {
+      console.warn('Image search error:', e)
+    } finally {
+      setIsSearchingImages(false)
+    }
+  }
 
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI
 
@@ -541,44 +578,93 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
               </div>
             </div>
 
-            {/* Visual Image Preview */}
+            {/* Visual Image Preview with direct Change Image button */}
             <div className="relative rounded-2xl overflow-hidden border border-indigo-500/30 bg-slate-950 aspect-video max-h-56 flex items-center justify-center shadow-2xl group">
               <img
                 src={imageUrl || getThemeImageForTitle(title).imageUrl}
                 alt={title}
                 className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&q=80'
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1200&q=80'
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
 
-              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-white/20 text-[11px] font-bold text-indigo-300">
+              {/* Tag & Floating Change Image Button */}
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-white/20 text-[11px] font-bold text-indigo-300 max-w-[200px] truncate">
                 <span>{getThemeImageForTitle(title).title}</span>
               </div>
 
+              <button
+                type="button"
+                onClick={handleCycleImage}
+                title="Bấm để đổi sang ảnh khác (Click liên tục tới khi bạn ưng ý)"
+                className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-indigo-600/90 hover:bg-indigo-500 border border-indigo-300/40 text-xs font-black text-white flex items-center gap-1.5 backdrop-blur-md shadow-xl transition transform active:scale-95 cursor-pointer z-10"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-cyan-300 ${isChangingImage ? 'animate-spin' : ''}`} />
+                <span>🔄 Đổi ảnh khác</span>
+              </button>
+
               <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
-                <div className="text-xs font-bold text-white drop-shadow truncate max-w-[320px]">
+                <div className="text-xs font-bold text-white drop-shadow truncate max-w-[300px]">
                   {title || 'Chưa đặt tiêu đề'}
                 </div>
                 <button
                   type="button"
                   onClick={handleTestVoice}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg transition cursor-pointer shrink-0"
+                  className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg transition cursor-pointer shrink-0"
                 >
-                  <Volume2 className="w-3.5 h-3.5" />
+                  <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
                   <span>{isPlayingTestVoice ? 'Đang đọc...' : 'Thử giọng AI'}</span>
                 </button>
               </div>
             </div>
 
-            {/* Custom image option */}
-            <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-              <span className="text-[11px] text-emerald-400 font-medium">
-                ✓ Hình ảnh & giọng đọc AI sẽ tự động kích hoạt khi đến {time}
-              </span>
-              <label className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer underline flex items-center gap-1">
-                <span>Chọn ảnh từ máy...</span>
+            {/* Quick Action Toolbar for Images */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleCycleImage}
+                className="px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-black flex items-center justify-center gap-1.5 shadow-md transition active:scale-95 cursor-pointer col-span-2 sm:col-span-1"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isChangingImage ? 'animate-spin' : ''}`} />
+                <span>Đổi ảnh (Click tiếp)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowImageSearch(!showImageSearch)
+                  if (!showImageSearch && onlineImageResults.length === 0) {
+                    handleSearchOnlineImages(title)
+                  }
+                }}
+                className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  showImageSearch
+                    ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
+                    : 'bg-slate-900 border-slate-700 hover:border-slate-600 text-slate-300'
+                }`}
+              >
+                <Search className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Tìm ảnh Google</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowUrlInput(!showUrlInput)}
+                className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  showUrlInput
+                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                    : 'bg-slate-900 border-slate-700 hover:border-slate-600 text-slate-300'
+                }`}
+              >
+                <LinkIcon className="w-3.5 h-3.5 text-amber-400" />
+                <span>Dán link ảnh</span>
+              </button>
+
+              <label className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-300 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer">
+                <FolderOpen className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Chọn từ máy</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -589,6 +675,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                       reader.onload = (event) => {
                         if (event.target?.result) {
                           setImageUrl(event.target.result as string)
+                          setAiSuccessMessage('📁 Đã chọn ảnh từ máy tính thành công!')
                         }
                       }
                       reader.readAsDataURL(file)
@@ -597,6 +684,133 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                   className="hidden"
                 />
               </label>
+            </div>
+
+            {/* Direct URL input bar */}
+            {showUrlInput && (
+              <div className="p-3 rounded-xl bg-slate-900 border border-amber-500/30 space-y-2">
+                <span className="text-[11px] font-bold text-amber-300">Dán trực tiếp URL hình ảnh từ Google / Web:</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    value={customUrlInput}
+                    onChange={(e) => setCustomUrlInput(e.target.value)}
+                    placeholder="https://images.unsplash.com/photo-... hoặc link ảnh Google"
+                    className="flex-1 px-3 py-1.5 rounded-lg glass-input text-xs text-white font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customUrlInput.trim()) {
+                        setImageUrl(customUrlInput.trim())
+                        setAiSuccessMessage('🔗 Đã áp dụng hình ảnh từ URL!')
+                        setShowUrlInput(false)
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition cursor-pointer shrink-0"
+                  >
+                    Áp dụng
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Online Image Search Drawer */}
+            {showImageSearch && (
+              <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-cyan-500/40 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={imageSearchQuery}
+                      onChange={(e) => setImageSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearchOnlineImages()}
+                      placeholder={title ? `Tìm ảnh cho "${title}"...` : 'Nhập từ khóa ảnh (VD: điện thoại, chó con, học bài)...'}
+                      className="w-full pl-8 pr-3 py-2 rounded-xl glass-input text-xs text-white"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSearchOnlineImages()}
+                    disabled={isSearchingImages}
+                    className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                  >
+                    {isSearchingImages ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Search className="w-3.5 h-3.5" />
+                    )}
+                    <span>Tìm kiếm</span>
+                  </button>
+                </div>
+
+                {/* Quick query chips */}
+                <div className="flex flex-wrap gap-1.5 text-[10px]">
+                  {['điện thoại', 'học bài', 'nghe nhạc', 'thể dục', 'uống nước', 'ăn cơm', 'nghỉ ngơi'].map((chip, idx) => (
+                    <button
+                      type="button"
+                      key={idx}
+                      onClick={() => {
+                        setImageSearchQuery(chip)
+                        handleSearchOnlineImages(chip)
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-cyan-900/40 text-slate-300 hover:text-cyan-300 border border-slate-700 transition cursor-pointer"
+                    >
+                      #{chip}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Gallery of online images */}
+                {onlineImageResults.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
+                    {onlineImageResults.map((imgItem, idx) => {
+                      const isChosen = (imageUrl || getThemeImageForTitle(title).imageUrl) === imgItem.imageUrl
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => {
+                            setImageUrl(imgItem.imageUrl)
+                            setAiSuccessMessage(`✨ Đã chọn ảnh: "${imgItem.title}"!`)
+                          }}
+                          className={`relative rounded-xl overflow-hidden aspect-video border-2 transition cursor-pointer group ${
+                            isChosen ? 'border-cyan-400 ring-2 ring-cyan-500/40' : 'border-slate-800 hover:border-slate-600'
+                          }`}
+                        >
+                          <img
+                            src={imgItem.imageUrl}
+                            alt={imgItem.title}
+                            className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                            onError={(e) => {
+                              (e.target as HTMLElement).parentElement?.remove()
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex items-end p-1.5">
+                            <span className="text-[9px] text-white font-medium truncate drop-shadow">
+                              {imgItem.title}
+                            </span>
+                          </div>
+                          {isChosen && (
+                            <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shadow">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                          )}
+                          <span className="absolute bottom-1 right-1 text-[8px] px-1 py-0.2 rounded bg-slate-950/80 text-cyan-300 font-mono">
+                            {imgItem.source}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-xs text-slate-400 pt-0.5">
+              <span className="text-[11px] text-emerald-400 font-medium">
+                ✓ Hình ảnh & giọng đọc AI sẽ tự động kích hoạt liên tục khi đến {time}
+              </span>
             </div>
 
             {/* Local file picker */}
