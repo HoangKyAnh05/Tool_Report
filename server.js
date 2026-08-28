@@ -112,7 +112,15 @@ const server = http.createServer(async (req, res) => {
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath).toLowerCase()
     const contentType = MIME_TYPES[ext] || 'application/octet-stream'
-    res.writeHead(200, { 'Content-Type': contentType })
+    const headers = { 'Content-Type': contentType }
+    if (ext === '.html') {
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+      headers['Pragma'] = 'no-cache'
+      headers['Expires'] = '0'
+    } else {
+      headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+    }
+    res.writeHead(200, headers)
     fs.createReadStream(filePath).pipe(res)
     return
   }
@@ -120,7 +128,12 @@ const server = http.createServer(async (req, res) => {
   // SPA fallback to index.html
   const indexPath = path.join(webRoot, 'index.html')
   if (fs.existsSync(indexPath)) {
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    })
     fs.createReadStream(indexPath).pipe(res)
     return
   }

@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && cross-env BUILD_TARGET=web vite build",
     "build:web": "tsc && cross-env BUILD_TARGET=web vite build",
     "build:desktop": "tsc && vite build",
     "start": "node server.js",
@@ -24,24 +24,24 @@
   "author": "HoangKyAnh",
   "license": "MIT",
   "dependencies": {
-    "canvas-confetti": "^1.9.4",
-    "lucide-react": "^1.35.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
-  },
-  "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^26.4.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.1",
+    "canvas-confetti": "^1.9.4",
     "cross-env": "^10.1.0",
-    "electron": "^44.0.0",
-    "gh-pages": "^6.3.0",
+    "lucide-react": "^1.35.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2",
+    "vite": "^8.2.2"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "gh-pages": "^6.3.0",
     "vite-plugin-electron": "^1.1.1",
     "vite-plugin-electron-renderer": "^1.0.0"
   }

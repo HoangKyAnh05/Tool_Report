@@ -4,4 +4,9 @@ services:
     env: node
     plan: free
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: node server.js
+    envVars:
+      - key: BUILD_TARGET
+        value: "web"
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
