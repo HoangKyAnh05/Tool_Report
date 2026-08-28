@@ -76,6 +76,18 @@ const server = http.createServer((req, res) => {
   res.end('404 Not Found')
 })
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    const nextPort = Number(PORT) + 1
+    console.log(`Port ${PORT} in use, automatically trying port ${nextPort}...`)
+    server.listen(nextPort, () => {
+      console.log(`🚀 Production server running at http://localhost:${nextPort}`)
+    })
+  } else {
+    console.error('Server error:', err)
+  }
+})
+
 server.listen(PORT, () => {
   console.log(`🚀 Production server running at http://localhost:${PORT}`)
 })
