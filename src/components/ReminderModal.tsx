@@ -9,6 +9,7 @@ import {
   CURATED_TASK_VIDEOS,
   AiMatchedVideo,
 } from '../utils/aiVideoGenerator'
+import { AiVideoPlayer } from './AiVideoPlayer'
 import {
   X,
   Clock,
@@ -430,18 +431,17 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
               </div>
             </div>
 
-            {/* Video Player Box */}
+            {/* Video Player Box with Instant Playback and AI Fallback */}
             <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-black aspect-video max-h-56 flex items-center justify-center shadow-2xl">
               {videoUrl ? (
-                <video
+                <AiVideoPlayer
                   key={videoUrl}
-                  ref={previewVideoRef}
-                  src={videoType === 'local' ? `media:///${encodeURIComponent(videoUrl.replace(/\\/g, '/'))}` : videoUrl}
-                  controls
-                  autoPlay
-                  loop
-                  playsInline
-                  className="w-full h-full object-contain"
+                  src={videoUrl}
+                  taskTitle={title || 'Nhiệm vụ'}
+                  isLocal={videoType === 'local'}
+                  autoPlay={true}
+                  loop={true}
+                  controls={true}
                 />
               ) : (
                 <div className="text-center p-6 text-slate-500">

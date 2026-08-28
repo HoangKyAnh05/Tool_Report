@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { ReminderItem } from '../types'
 import { audioTts } from '../utils/audioTts'
+import { AiVideoPlayer } from './AiVideoPlayer'
 import confetti from 'canvas-confetti'
 import {
   BellRing,
@@ -149,28 +150,21 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
         {/* Glowing Ambient Background */}
         <div className="absolute inset-0 bg-radial from-indigo-900/30 via-slate-950/80 to-slate-950 pointer-events-none" />
 
-        <div className="relative w-full max-w-4xl h-[65vh] rounded-2xl overflow-hidden border border-indigo-500/30 shadow-2xl bg-black flex items-center justify-center">
-          {videoSrc ? (
-            <video
-              ref={videoRef}
-              src={videoSrc}
-              autoPlay
-              loop
-              playsInline
-              controls
-              className="w-full h-full object-contain"
-            />
-          ) : (
-            <div className="text-center p-8 text-slate-400">
-              <Clock className="w-16 h-16 mx-auto mb-3 text-indigo-400 animate-bounce" />
-              <p className="text-lg font-bold text-white">Đến giờ hẹn: {reminder.title}</p>
-            </div>
-          )}
+        <div className="relative w-full max-w-4xl h-[65vh] rounded-2xl overflow-hidden border border-indigo-500/40 shadow-2xl bg-black flex items-center justify-center">
+          <AiVideoPlayer
+            src={reminder.videoUrl}
+            taskTitle={reminder.title}
+            isLocal={reminder.videoType === 'local'}
+            autoPlay={true}
+            loop={true}
+            controls={true}
+            className="w-full h-full"
+          />
 
           {/* Subtitle / TTS Message Overlay */}
           {reminder.ttsMessage && (
-            <div className="absolute bottom-14 left-6 right-6 p-4 rounded-xl bg-slate-950/80 backdrop-blur-md border border-white/10 text-center shadow-lg pointer-events-none">
-              <p className="text-sm sm:text-base font-semibold text-emerald-300">
+            <div className="absolute bottom-6 left-6 right-6 p-3.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-white/15 text-center shadow-lg pointer-events-none z-30">
+              <p className="text-sm sm:text-base font-bold text-emerald-300">
                 "{reminder.ttsMessage}"
               </p>
             </div>
