@@ -55,6 +55,7 @@ export const AiVideoPlayer: React.FC<AiVideoPlayerProps> = ({
 
     const category = analyzeTaskCategory(taskTitle || 'Nhiệm vụ')
     const colorPalettes: Record<string, { bg1: string; bg2: string; accent: string; icon: string; tag: string }> = {
+      swim: { bg1: '#0284c7', bg2: '#082f49', accent: '#38bdf8', icon: '🏊', tag: 'ĐẾN GIỜ ĐI BƠI RÈN LUYỆN' },
       meal: { bg1: '#ea580c', bg2: '#1c0a00', accent: '#fb923c', icon: '🍱', tag: 'ĐẾN GIỜ ĂN UỐNG & NGHỈ NGƠI' },
       exercise: { bg1: '#4f46e5', bg2: '#0b0f19', accent: '#38bdf8', icon: '🏃', tag: 'ĐẾN GIỜ VẬN ĐỘNG & THỂ DỤC' },
       water: { bg1: '#0284c7', bg2: '#031726', accent: '#38bdf8', icon: '💧', tag: 'ĐẾN GIỜ UỐNG NƯỚC BÙ KHOÁNG' },

@@ -59,6 +59,9 @@ export const CURATED_TASK_VIDEOS: Record<string, { url: string; thumbnail: strin
 export function analyzeTaskCategory(taskTitle: string): string {
   const lower = taskTitle.toLowerCase()
 
+  if (/bơi|đi bơi|hồ bơi|bể bơi|swim|swimming|lặn/.test(lower)) {
+    return 'swim'
+  }
   if (/ăn|cơm|bữa|tối|trưa|sáng|nấu|food|dinner|lunch|breakfast|cà phê|coffee|trà/.test(lower)) {
     return 'meal'
   }
@@ -157,6 +160,7 @@ export async function generateAiDynamicVideo(taskTitle: string): Promise<AiMatch
       // Color scheme based on category
       const category = analyzeTaskCategory(taskTitle)
       const colorPalettes: Record<string, { bg1: string; bg2: string; accent: string; icon: string; tag: string }> = {
+        swim: { bg1: '#0284c7', bg2: '#082f49', accent: '#38bdf8', icon: '🏊', tag: 'ĐẾN GIỜ ĐI BƠI RÈN LUYỆN' },
         meal: { bg1: '#ea580c', bg2: '#1c0a00', accent: '#fb923c', icon: '🍱', tag: 'ĐẾN GIỜ ĂN UỐNG & NGHỈ NGƠI' },
         exercise: { bg1: '#4f46e5', bg2: '#0b0f19', accent: '#38bdf8', icon: '🏃', tag: 'ĐẾN GIỜ VẬN ĐỘNG & GIÃN CƠ' },
         water: { bg1: '#0284c7', bg2: '#031726', accent: '#38bdf8', icon: '💧', tag: 'ĐẾN GIỜ UỐNG NƯỚC BỔ SUNG' },

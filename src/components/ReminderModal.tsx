@@ -49,6 +49,7 @@ const DAYS_OF_WEEK = [
 ]
 
 const QUICK_TOPICS = [
+  { label: '🏊 Đi bơi / Bơi lội', query: 'Đến giờ đi bơi' },
   { label: '🍱 Ăn uống / Ăn tối', query: 'Đến giờ ăn tối' },
   { label: '💧 Uống nước', query: 'Uống nước nạp năng lượng' },
   { label: '🏃 Tập thể dục', query: 'Tập thể dục giãn cơ' },
@@ -128,6 +129,24 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setAiSuccessMessage('Đã tự động tìm và chọn video ăn tối phù hợp!')
     }
   }, [initialData, isOpen])
+
+  // Live Auto-Search as user types in the title input
+  useEffect(() => {
+    if (!isOpen) return
+    const timer = setTimeout(() => {
+      const trimmed = title.trim()
+      if (trimmed.length >= 2) {
+        const results = searchOnlineVideos(trimmed)
+        setSearchResults(results)
+        if (results.length > 0) {
+          // If first search result is strongly relevant, auto-select it
+          const best = results[0]
+          selectAndCacheVideo(best.url, best.title)
+        }
+      }
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [title, isOpen])
 
   if (!isOpen) return null
 

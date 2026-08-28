@@ -19,9 +19,25 @@ export const AUTHENTIC_ONLINE_VIDEOS: Array<{
   thumbnail: string
   category: string
 }> = [
+  // 🏊 BƠI LỘI / ĐI BƠI / HỒ BƠI / THỂ THAO DƯỚI NƯỚC
+  {
+    keywords: ['bơi', 'đi bơi', 'bơi lội', 'hồ bơi', 'bể bơi', 'swim', 'swimming', 'lặn', 'nước biển'],
+    title: 'Đi Bơi Thư Giãn & Luyện Sức Khỏe Làn Nước Xanh (HD)',
+    url: 'https://cdn.pixabay.com/video/2020/09/25/51139-464872221_tiny.mp4',
+    thumbnail: 'https://images.pexels.com/photos/863988/pexels-photo-863988.jpeg?auto=compress&cs=tinysrgb&w=400',
+    category: 'Bơi lội',
+  },
+  {
+    keywords: ['bơi', 'hồ bơi', 'bể bơi', 'mát mẻ', 'mùa hè'],
+    title: 'Bể Bơi Làn Nước Trong Xanh Mát Lạnh (HD)',
+    url: 'https://cdn.pixabay.com/video/2020/07/04/43831-435738876_tiny.mp4',
+    thumbnail: 'https://images.pexels.com/photos/1263349/pexels-photo-1263349.jpeg?auto=compress&cs=tinysrgb&w=400',
+    category: 'Bơi lội',
+  },
+
   // 🍱 ĂN UỐNG / ĂN TỐI / ĂN TRƯA / BỮA ĂN
   {
-    keywords: ['ăn tối', 'ăn cơm', 'bữa tối', 'dinner', 'ăn đêm', 'ăn', 'thức ăn', 'nấu ăn', 'cơm'],
+    keywords: ['ăn tối', 'ăn cơm', 'bữa tối', 'dinner', 'ăn đêm', 'ăn', 'thức ăn', 'nấu ăn', 'cơm', 'ăn uống'],
     title: 'Bữa Ăn Tối Gia Đình Ấm Cúng (HD)',
     url: 'https://cdn.pixabay.com/video/2020/05/25/40149-425178784_tiny.mp4',
     thumbnail: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -67,7 +83,7 @@ export const AUTHENTIC_ONLINE_VIDEOS: Array<{
 
   // 💧 UỐNG NƯỚC / THUỐC
   {
-    keywords: ['uống nước', 'nước', 'bù nước', 'water', 'uống', 'khoáng', 'khát', 'uống thuốc', 'thuốc'],
+    keywords: ['uống nước', 'nước', 'bù nước', 'water', 'uống', 'khoáng', 'khát', 'uống thuốc', 'thuốc', 'vitamin'],
     title: 'Rót Cốc Nước Khoáng Tinh Khiết Mát Lạnh (HD)',
     url: 'https://cdn.pixabay.com/video/2021/08/04/83875-584732152_tiny.mp4',
     thumbnail: 'https://images.pexels.com/photos/416528/pexels-photo-416528.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -161,11 +177,11 @@ export function searchOnlineVideos(query: string): SearchVideoResult[] {
     let score = 0
     for (const kw of video.keywords) {
       if (lowerQuery.includes(kw)) {
-        score += 8
+        score += 15
       }
       for (const word of words) {
         if (kw.includes(word) || word.includes(kw)) {
-          score += 3
+          score += 5
         }
       }
     }
