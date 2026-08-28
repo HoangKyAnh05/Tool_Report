@@ -153,52 +153,64 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     }
   }
 
+  // Helper to select and cache video locally for guaranteed playback
+  const selectAndCacheVideo = async (url: string, titleStr: string) => {
+    setVideoName(titleStr)
+    setVideoUrl(url)
+    setVideoType('sample')
+
+    if (window.electronAPI && url.startsWith('http')) {
+      try {
+        const localCached = await window.electronAPI.cacheRemoteVideo(url)
+        if (localCached && localCached !== url) {
+          setVideoUrl(localCached)
+          setVideoType('local')
+        }
+      } catch (e) {
+        console.warn('Caching remote video error:', e)
+      }
+    }
+  }
+
   // 2. Search Online Videos (returns 4 matching options with live selection)
   const handleSearchOnlineVideos = () => {
     const taskName = title.trim() || 'Nhiệm vụ'
     setIsSearchingOnline(true)
     setAiSuccessMessage(null)
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const results = searchOnlineVideos(taskName)
       setSearchResults(results)
       setIsSearchingOnline(false)
 
       if (results.length > 0) {
-        // Automatically select the first best match
         const best = results[0]
-        setVideoType('sample')
-        setVideoUrl(best.url)
-        setVideoName(best.title)
+        await selectAndCacheVideo(best.url, best.title)
         setAiSuccessMessage(`🌐 Đã tìm thấy ${results.length} video trực tuyến phù hợp cho "${taskName}"!`)
 
         if (!ttsMessage || ttsMessage.startsWith('Đã đến giờ')) {
           setTtsMessage(`Đến giờ rồi! Hãy thực hiện nhiệm vụ ${taskName} theo video nhé.`)
         }
       }
-    }, 400)
+    }, 300)
   }
 
   // 3. Quick Topic selection
-  const handleQuickTopic = (topicQuery: string) => {
+  const handleQuickTopic = async (topicQuery: string) => {
     setTitle(topicQuery)
     const results = searchOnlineVideos(topicQuery)
     setSearchResults(results)
     if (results.length > 0) {
-      setVideoType('sample')
-      setVideoUrl(results[0].url)
-      setVideoName(results[0].title)
+      await selectAndCacheVideo(results[0].url, results[0].title)
       setAiSuccessMessage(`Đã chọn chủ đề: "${topicQuery}"!`)
       setTtsMessage(`Đã đến giờ cho ${topicQuery} rồi, bạn hãy chuẩn bị nhé.`)
     }
   }
 
   // 4. Select a specific search result card
-  const handleSelectSearchResult = (res: SearchVideoResult) => {
-    setVideoType('sample')
-    setVideoUrl(res.url)
-    setVideoName(res.title)
-    setAiSuccessMessage(`✓ Đã chọn: "${res.title}"`)
+  const handleSelectSearchResult = async (res: SearchVideoResult) => {
+    await selectAndCacheVideo(res.url, res.title)
+    setAiSuccessMessage(`✓ Đã chọn video: "${res.title}"`)
   }
 
   const handleSelectLocalVideo = async () => {

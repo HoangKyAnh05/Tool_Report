@@ -11,6 +11,7 @@ const electronAPI = {
   wakeUpAlarm: (options) => ipcRenderer.invoke('alarm:wake-up', options),
   dismissAlarm: () => ipcRenderer.invoke('alarm:dismiss'),
   openVideoDialog: () => ipcRenderer.invoke('dialog:open-video'),
+  cacheRemoteVideo: (url) => ipcRenderer.invoke('video:cache-remote', url),
   isPackaged: () => ipcRenderer.invoke('app:is-packaged'),
   onTestTrigger: (callback) => {
     const handler = () => callback()

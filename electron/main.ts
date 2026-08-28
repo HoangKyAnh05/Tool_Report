@@ -1,5 +1,7 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, protocol, net } from 'electron'
 import path from 'node:path'
+import fs from 'node:fs'
+import crypto from 'node:crypto'
 import url, { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -250,6 +252,48 @@ function setupIPC() {
       }
     }
     return true
+  })
+
+  // Download & cache remote video to local disk for 100% offline & unblocked playback
+  ipcMain.handle('video:cache-remote', async (_event, remoteUrl: string) => {
+    try {
+      if (!remoteUrl || !remoteUrl.startsWith('http')) {
+        return remoteUrl
+      }
+
+      const cacheDir = path.join(app.getPath('userData'), 'cached_videos')
+      if (!fs.existsSync(cacheDir)) {
+        fs.mkdirSync(cacheDir, { recursive: true })
+      }
+
+      const hash = crypto.createHash('md5').update(remoteUrl).digest('hex')
+      const localFilePath = path.join(cacheDir, `${hash}.mp4`)
+
+      if (fs.existsSync(localFilePath) && fs.statSync(localFilePath).size > 1000) {
+        return localFilePath
+      }
+
+      const response = await net.fetch(remoteUrl, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Referer: new URL(remoteUrl).origin,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch video: ${response.statusText}`)
+      }
+
+      const arrayBuffer = await response.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+      fs.writeFileSync(localFilePath, buffer)
+
+      return localFilePath
+    } catch (error) {
+      console.error('Error caching remote video:', error)
+      return remoteUrl
+    }
   })
 
   // Open Native Video Picker

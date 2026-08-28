@@ -12,6 +12,7 @@ interface Window {
     wakeUpAlarm: (options: { autoFullscreen: boolean }) => Promise<boolean>
     dismissAlarm: () => Promise<boolean>
     openVideoDialog: () => Promise<{ path: string; name: string } | null>
+    cacheRemoteVideo: (url: string) => Promise<string>
     isPackaged: () => Promise<boolean>
     onTestTrigger: (callback: () => void) => () => void
   }
