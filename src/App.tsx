@@ -230,7 +230,36 @@ export default function App() {
           <span>Tự động thức tỉnh từ khay hệ thống khi đến giờ</span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* Reload & Restart App buttons */}
+          <button
+            onClick={() => {
+              if (window.electronAPI) {
+                window.electronAPI.reloadApp()
+              } else {
+                window.location.reload()
+              }
+            }}
+            className="flex items-center gap-1 text-indigo-300 hover:text-white bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded-md border border-indigo-500/30 transition cursor-pointer"
+            title="Tải lại giao diện (F5)"
+          >
+            <span>🔄 Tải lại (F5)</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (window.electronAPI) {
+                window.electronAPI.restartApp()
+              } else {
+                window.location.reload()
+              }
+            }}
+            className="flex items-center gap-1 text-purple-300 hover:text-white bg-purple-500/10 hover:bg-purple-500/20 px-2.5 py-1 rounded-md border border-purple-500/30 transition cursor-pointer"
+            title="Khởi động lại toàn bộ ứng dụng"
+          >
+            <span>⚡ Khởi động lại App</span>
+          </button>
+
           <button
             onClick={() => setIsMobileGuideOpen(true)}
             className="flex items-center gap-1.5 hover:text-white transition cursor-pointer"
@@ -244,7 +273,7 @@ export default function App() {
             className="flex items-center gap-1.5 hover:text-white transition cursor-pointer"
           >
             <SettingsIcon className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Cài đặt hệ thống</span>
+            <span>Cài đặt</span>
           </button>
         </div>
       </footer>

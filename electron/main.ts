@@ -80,6 +80,12 @@ function createMainWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
 
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r')) {
+      mainWindow?.webContents.reloadIgnoringCache()
+    }
+  })
+
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
     mainWindow?.focus()
@@ -124,6 +130,21 @@ function setupSystemTray() {
           }
         },
       },
+      {
+        label: '🔄 Tải lại ứng dụng (Reload)',
+        click: () => {
+          if (mainWindow) {
+            mainWindow.webContents.reloadIgnoringCache()
+          }
+        },
+      },
+      {
+        label: '⚡ Khởi động lại (Restart App)',
+        click: () => {
+          app.relaunch()
+          app.exit(0)
+        },
+      },
       { type: 'separator' },
       {
         label: '🔔 Kích hoạt thử chuông báo',
@@ -163,6 +184,18 @@ function setupSystemTray() {
 
 // Setup IPC Handlers
 function setupIPC() {
+  // Restart & Reload
+  ipcMain.handle('app:restart', () => {
+    app.relaunch()
+    app.exit(0)
+  })
+
+  ipcMain.handle('app:reload', () => {
+    if (mainWindow) {
+      mainWindow.webContents.reloadIgnoringCache()
+    }
+    return true
+  })
   // Window controls
   ipcMain.handle('window:minimize', () => {
     mainWindow?.minimize()
