@@ -1,5 +1,6 @@
 import { ReminderItem, AppSettings } from '../types'
 import { SAMPLE_VIDEOS } from '../data/sampleVideos'
+import { getThemeImageForTitle } from './imageThemeEngine'
 
 const REMINDERS_KEY = 'video_reminders_data_v1'
 const SETTINGS_KEY = 'video_reminders_settings_v1'
@@ -7,13 +8,32 @@ const SETTINGS_KEY = 'video_reminders_settings_v1'
 export const DEFAULT_SETTINGS: AppSettings = {
   runInBackground: true,
   startWithWindows: true,
-  soundVolume: 90,
+  soundVolume: 100,
   theme: 'dark',
   voiceRate: 1.0,
   voicePitch: 1.0,
 }
 
 export const INITIAL_REMINDERS: ReminderItem[] = [
+  {
+    id: 'sample_rem_sing',
+    title: 'Đến giờ học hát',
+    description: 'Luyện thanh và biểu diễn các bài hát yêu thích.',
+    time: '19:00',
+    repeatType: 'daily',
+    customDays: [0, 1, 2, 3, 4, 5, 6],
+    enabled: true,
+    imageUrl: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&q=80',
+    videoType: 'sample',
+    videoUrl: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&q=80',
+    videoName: 'Học Hát & Biểu Diễn Âm Nhạc',
+    ttsEnabled: true,
+    ttsMessage: 'Đã đến giờ Đến giờ học hát rồi! Bạn hãy thực hiện ngay nhé.',
+    volume: 100,
+    autoFullscreen: false,
+    autoDismissMinutes: 0,
+    createdAt: Date.now(),
+  },
   {
     id: 'sample_rem_1',
     title: 'Nhắc nhở: Giãn cơ & Vận động nhẹ',
@@ -22,12 +42,13 @@ export const INITIAL_REMINDERS: ReminderItem[] = [
     repeatType: 'daily',
     customDays: [1, 2, 3, 4, 5], // Mon to Fri
     enabled: true,
+    imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1200&q=80',
     videoType: 'sample',
     videoUrl: SAMPLE_VIDEOS[0].url,
     videoName: SAMPLE_VIDEOS[0].title,
     ttsEnabled: true,
-    ttsMessage: 'Đã đến giờ vận động rồi! Bạn hãy đứng dậy vươn vai và tập các động tác nhẹ theo video nhé.',
-    volume: 85,
+    ttsMessage: 'Đã đến giờ vận động rồi! Bạn hãy đứng dậy vươn vai và thư giãn nhé.',
+    volume: 100,
     autoFullscreen: false,
     autoDismissMinutes: 0,
     createdAt: Date.now(),
@@ -40,12 +61,13 @@ export const INITIAL_REMINDERS: ReminderItem[] = [
     repeatType: 'daily',
     customDays: [0, 1, 2, 3, 4, 5, 6],
     enabled: true,
+    imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=1200&q=80',
     videoType: 'sample',
     videoUrl: SAMPLE_VIDEOS[3].url,
     videoName: SAMPLE_VIDEOS[3].title,
     ttsEnabled: true,
-    ttsMessage: 'Đến giờ uống nước rồi, bạn hãy bổ sung một cốc nước để cơ thể luôn tràn đầy năng lượng nhé.',
-    volume: 80,
+    ttsMessage: 'Đến giờ uống nước rồi, bạn hãy bổ sung một cốc nước để cơ thể tràn đầy năng lượng nhé.',
+    volume: 100,
     autoFullscreen: false,
     autoDismissMinutes: 0,
     createdAt: Date.now(),
@@ -59,7 +81,17 @@ export function loadReminders(): ReminderItem[] {
       saveReminders(INITIAL_REMINDERS)
       return INITIAL_REMINDERS
     }
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      return parsed.map((item: ReminderItem) => {
+        if (!item.imageUrl) {
+          item.imageUrl = getThemeImageForTitle(item.title).imageUrl
+        }
+        item.volume = 100
+        return item
+      })
+    }
+    return INITIAL_REMINDERS
   } catch (e) {
     console.error('Failed to load reminders:', e)
     return INITIAL_REMINDERS

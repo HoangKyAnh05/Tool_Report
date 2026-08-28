@@ -76,6 +76,9 @@ function createMainWindow() {
   // Prevent window title override
   mainWindow.on('page-title-updated', (e) => e.preventDefault())
 
+  // Clear cache on startup so updated web code is always loaded fresh
+  mainWindow.webContents.session.clearCache().catch(() => {})
+
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
   } else {

@@ -50,7 +50,7 @@ function S() {
 			contextIsolation: !0,
 			webSecurity: !1
 		}
-	}), _.on("page-title-updated", (e) => e.preventDefault()), process.env.VITE_DEV_SERVER_URL ? _.loadURL(process.env.VITE_DEV_SERVER_URL) : _.loadFile(u.join(g, "../dist/index.html")), _.webContents.on("before-input-event", (e, t) => {
+	}), _.on("page-title-updated", (e) => e.preventDefault()), _.webContents.session.clearCache().catch(() => {}), process.env.VITE_DEV_SERVER_URL ? _.loadURL(process.env.VITE_DEV_SERVER_URL) : _.loadFile(u.join(g, "../dist/index.html")), _.webContents.on("before-input-event", (e, t) => {
 		(t.key === "F5" || t.control && t.key.toLowerCase() === "r") && _?.webContents.reloadIgnoringCache();
 	}), _.webContents.setWindowOpenHandler(({ url: e }) => ((e.startsWith("http://") || e.startsWith("https://")) && l.openExternal(e), { action: "deny" })), _.once("ready-to-show", () => {
 		_?.show(), _?.focus();
