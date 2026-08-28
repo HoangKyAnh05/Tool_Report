@@ -2,12 +2,14 @@
   "name": "video-reminder-app",
   "version": "1.0.0",
   "description": "Tool nhắc hẹn kèm phát video tự động chạy ngầm trên PC và Web Mobile",
-  "main": "dist-electron/main.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && cross-env BUILD_TARGET=web vite build",
     "build:web": "tsc && cross-env BUILD_TARGET=web vite build",
+    "build:desktop": "tsc && vite build",
+    "start": "node server.js",
     "deploy": "npm run build:web && gh-pages -d dist --dotfiles",
     "preview": "vite preview",
     "create-shortcut": "powershell -ExecutionPolicy Bypass -File ./scripts/create-desktop-shortcut.ps1"
