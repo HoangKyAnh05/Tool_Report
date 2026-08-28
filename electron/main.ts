@@ -52,7 +52,8 @@ function createMainWindow() {
     title: 'Video Reminder - Nhắc Hẹn & Báo Thức Video',
     backgroundColor: '#030712',
     frame: false, // Custom frameless window
-    show: false, // Don't show until ready-to-show
+    show: true, // Show immediately on launch
+    center: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -72,7 +73,16 @@ function createMainWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
+    mainWindow?.focus()
   })
+
+  // Fallback ensure visible
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isVisible()) {
+      mainWindow.show()
+      mainWindow.focus()
+    }
+  }, 500)
 
   // When user clicks close button [X], minimize to tray instead of quitting
   mainWindow.on('close', (event) => {

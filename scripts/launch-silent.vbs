@@ -1,5 +1,16 @@
+Set fso = CreateObject("Scripting.FileSystemObject")
+scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
+projectDir = fso.GetParentFolderName(scriptDir)
+
 Set WshShell = CreateObject("WScript.Shell")
-' Get the directory of this script
-strCurDir = WshShell.CurrentDirectory
-' Run npm run dev or electron without showing any command prompt window (0 = hidden)
-WshShell.Run "cmd /c npm run dev", 0, False
+WshShell.CurrentDirectory = projectDir
+
+electronExe = projectDir & "\node_modules\electron\dist\electron.exe"
+
+If fso.FileExists(electronExe) Then
+    ' Run native electron executable (GUI app, no console window at all)
+    WshShell.Run """" & electronExe & """ """ & projectDir & """", 1, False
+Else
+    ' Fallback via npx
+    WshShell.Run "cmd /c npx electron .", 0, False
+End If
