@@ -6,11 +6,11 @@ const electronAPI = {
   hideToTray: () => ipcRenderer.invoke('window:hide-to-tray'),
   close: () => ipcRenderer.invoke('window:close'),
   quit: () => ipcRenderer.invoke('window:quit'),
-  wakeUpAlarm: (options: { autoFullscreen: boolean }) => ipcRenderer.invoke('alarm:wake-up', options),
+  wakeUpAlarm: (options) => ipcRenderer.invoke('alarm:wake-up', options),
   dismissAlarm: () => ipcRenderer.invoke('alarm:dismiss'),
   openVideoDialog: () => ipcRenderer.invoke('dialog:open-video'),
   isPackaged: () => ipcRenderer.invoke('app:is-packaged'),
-  onTestTrigger: (callback: () => void) => {
+  onTestTrigger: (callback) => {
     const handler = () => callback()
     ipcRenderer.on('alarm:test-trigger', handler)
     return () => {

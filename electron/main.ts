@@ -5,8 +5,14 @@ import url, { fileURLToPath } from 'node:url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Set app name
-app.name = 'Video Reminder'
+// Set app name & isolate userData path to avoid collision with other electron projects
+app.name = 'VideoReminderApp'
+try {
+  const appData = app.getPath('appData')
+  app.setPath('userData', path.join(appData, 'VideoReminderApp'))
+} catch (e) {
+  console.warn('Set userData path error:', e)
+}
 
 // Disable GPU acceleration if necessary or enable hardware video decoding
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -32,21 +38,21 @@ function registerMediaProtocol() {
   })
 }
 
-// Generate simple SVG tray icon
+// Generate simple 16x16 PNG tray icon (bell cyan)
 function createTrayIcon(): Electron.NativeImage {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="13" r="8"/>
-    <path d="M12 9v4l2 2"/>
-    <path d="M5 3 2 6"/>
-    <path d="m22 6-3-3"/>
-    <path d="M6.38 18.7 4 21"/>
-    <path d="M17.64 18.67 20 21"/>
-  </svg>`
-  const buffer = Buffer.from(svg)
-  return nativeImage.createFromBuffer(buffer, { width: 16, height: 16 })
+  try {
+    const pngBase64 =
+      'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkoBAwUqifYdQAkGNYmJl/Y5OMxafpPzYDKDYY4gOMjIwM6G4AmwE4DRkAbU0HCEb+7vUAAAAASUVORK5CYII='
+    const img = nativeImage.createFromBuffer(Buffer.from(pngBase64, 'base64'))
+    return img
+  } catch (e) {
+    return nativeImage.createEmpty()
+  }
 }
 
 function createMainWindow() {
+  const preloadPath = path.join(__dirname, 'preload.cjs')
+
   mainWindow = new BrowserWindow({
     width: 1050,
     height: 720,
@@ -58,7 +64,7 @@ function createMainWindow() {
     show: true, // Show immediately on launch
     center: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: false, // Allows playing local media
@@ -103,52 +109,56 @@ function createMainWindow() {
 }
 
 function setupSystemTray() {
-  const icon = createTrayIcon()
-  tray = new Tray(icon)
-  tray.setToolTip('Video Reminder - Đang chạy ngầm')
+  try {
+    const icon = createTrayIcon()
+    tray = new Tray(icon)
+    tray.setToolTip('Video Reminder - Đang chạy ngầm')
 
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: '⏰ Mở Video Reminder',
-      click: () => {
-        if (mainWindow) {
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: '⏰ Mở Video Reminder',
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show()
+            mainWindow.focus()
+          }
+        },
+      },
+      { type: 'separator' },
+      {
+        label: '🔔 Kích hoạt thử chuông báo',
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show()
+            mainWindow.webContents.send('alarm:test-trigger')
+          }
+        },
+      },
+      { type: 'separator' },
+      {
+        label: '❌ Thoát ứng dụng hoàn toàn',
+        click: () => {
+          isQuitting = true
+          app.quit()
+        },
+      },
+    ])
+
+    tray.setContextMenu(contextMenu)
+
+    tray.on('double-click', () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible()) {
+          mainWindow.hide()
+        } else {
           mainWindow.show()
           mainWindow.focus()
         }
-      },
-    },
-    { type: 'separator' },
-    {
-      label: '🔔 Kích hoạt thử chuông báo',
-      click: () => {
-        if (mainWindow) {
-          mainWindow.show()
-          mainWindow.webContents.send('alarm:test-trigger')
-        }
-      },
-    },
-    { type: 'separator' },
-    {
-      label: '❌ Thoát ứng dụng hoàn toàn',
-      click: () => {
-        isQuitting = true
-        app.quit()
-      },
-    },
-  ])
-
-  tray.setContextMenu(contextMenu)
-
-  tray.on('double-click', () => {
-    if (mainWindow) {
-      if (mainWindow.isVisible()) {
-        mainWindow.hide()
-      } else {
-        mainWindow.show()
-        mainWindow.focus()
       }
-    }
-  })
+    })
+  } catch (err) {
+    console.warn('System tray setup warning:', err)
+  }
 }
 
 // Setup IPC Handlers
