@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { ReminderItem } from '../types'
 import { audioTts } from '../utils/audioTts'
 import { getThemeImageForTitle } from '../utils/imageThemeEngine'
@@ -29,8 +29,13 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
   onSnooze,
 }) => {
   const [isMuted, setIsMuted] = useState(false)
+  const isMutedRef = useRef(false)
   const [isTtsSpeaking, setIsTtsSpeaking] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    isMutedRef.current = isMuted
+  }, [isMuted])
 
   // Resolve best matched image for the reminder title
   const themeInfo = reminder ? getThemeImageForTitle(reminder.title) : null
@@ -39,48 +44,45 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
   useEffect(() => {
     if (!reminder) return
 
-    // Trigger sound chime & TTS speech
-    const triggerAudio = async () => {
-      audioTts.playChime((reminder.volume || 85) / 100)
-      if (reminder.ttsEnabled && reminder.ttsMessage) {
-        setIsTtsSpeaking(true)
-        await audioTts.speak(reminder.ttsMessage, {
-          volume: reminder.volume || 85,
-        })
-        setIsTtsSpeaking(false)
-      } else {
-        setIsTtsSpeaking(true)
-        await audioTts.speak(`Đã đến giờ ${reminder.title} rồi! Bạn hãy thực hiện ngay nhé.`, {
-          volume: reminder.volume || 85,
-        })
-        setIsTtsSpeaking(false)
-      }
-    }
+    const voiceMessage =
+      reminder.ttsEnabled && reminder.ttsMessage
+        ? reminder.ttsMessage
+        : `Đã đến giờ ${reminder.title} rồi! Bạn hãy thực hiện ngay nhé.`
 
-    triggerAudio()
+    // Start continuous urgent alarm ringing loop!
+    audioTts.startAlarmLoop(voiceMessage, {
+      volume: reminder.volume ?? 90,
+      isMuted: () => isMutedRef.current,
+      onSpeechChange: (speaking) => setIsTtsSpeaking(speaking),
+    })
 
     // Confetti effect
     confetti({
-      particleCount: 80,
-      spread: 70,
+      particleCount: 90,
+      spread: 80,
       origin: { y: 0.6 },
     })
 
     return () => {
-      audioTts.stop()
+      audioTts.stopAlarmLoop()
     }
   }, [reminder])
 
   if (!reminder) return null
 
   const handleDismiss = () => {
-    audioTts.stop()
+    audioTts.stopAlarmLoop()
     confetti({
       particleCount: 100,
       spread: 100,
       origin: { y: 0.5 },
     })
     onDismiss()
+  }
+
+  const handleSnoozeWithStop = (mins: number) => {
+    audioTts.stopAlarmLoop()
+    onSnooze(mins)
   }
 
   const handleToggleMute = () => {
@@ -248,7 +250,7 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
         <div className="flex items-center gap-3">
           {/* Snooze 5 mins */}
           <button
-            onClick={() => onSnooze(5)}
+            onClick={() => handleSnoozeWithStop(5)}
             className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-2 border border-slate-700 transition cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -257,7 +259,7 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
 
           {/* Snooze 10 mins */}
           <button
-            onClick={() => onSnooze(10)}
+            onClick={() => handleSnoozeWithStop(10)}
             className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-2 border border-slate-700 transition cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />

@@ -1,8 +1,10 @@
-// Text-to-Speech and Web Audio Alarm Chime
+// Text-to-Speech and Web Audio Alarm Engine
 class AudioTtsManager {
   private synth: SpeechSynthesis | null = null
   private voices: SpeechSynthesisVoice[] = []
   private isSpeaking = false
+  private isAlarmLoopRunning = false
+  private audioCtx: AudioContext | null = null
 
   constructor() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -26,21 +28,75 @@ class AudioTtsManager {
     return this.voices
   }
 
-  // Play pleasant, rich alarm chime with harmonics
-  public playChime(volume = 0.85) {
+  private getAudioContext(): AudioContext | null {
     try {
-      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      if (!AudioContextClass) return
-
-      const ctx = new AudioContextClass()
-      if (ctx.state === 'suspended') {
-        ctx.resume()
+      if (!this.audioCtx || this.audioCtx.state === 'closed') {
+        const AudioContextClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        if (AudioContextClass) {
+          this.audioCtx = new AudioContextClass()
+        }
       }
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume()
+      }
+      return this.audioCtx
+    } catch (e) {
+      return null
+    }
+  }
+
+  // Play realistic rhythmic alarm beeps (urgent wake-up pattern)
+  public playAlarmBeeps(volume = 0.85) {
+    try {
+      const ctx = this.getAudioContext()
+      if (!ctx) return
 
       const now = ctx.currentTime
       const safeVol = Math.max(0.1, Math.min(1.0, volume))
 
-      // Melodic arpeggio chord progression: F5 -> A5 -> C6 -> F6
+      // 4 quick urgent alarm beeps: beep - beep - beep - beep (two pairs)
+      const beeps = [
+        { time: 0.00, dur: 0.12, freq: 1046.5 }, // C6
+        { time: 0.18, dur: 0.12, freq: 1318.5 }, // E6
+        { time: 0.40, dur: 0.12, freq: 1046.5 }, // C6
+        { time: 0.58, dur: 0.18, freq: 1567.98 }, // G6
+        // Finishing resonant chime
+        { time: 0.85, dur: 0.60, freq: 2093.00 }, // C7
+      ]
+
+      beeps.forEach(({ time, dur, freq }) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(freq, now + time)
+
+        gain.gain.setValueAtTime(0.001, now + time)
+        gain.gain.linearRampToValueAtTime(safeVol * 0.5, now + time + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + time + dur)
+
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+
+        osc.start(now + time)
+        osc.stop(now + time + dur)
+      })
+    } catch (e) {
+      console.warn('Alarm beep audio error:', e)
+    }
+  }
+
+  // Play pleasant, rich alarm chime with harmonics
+  public playChime(volume = 0.85) {
+    try {
+      const ctx = this.getAudioContext()
+      if (!ctx) return
+
+      const now = ctx.currentTime
+      const safeVol = Math.max(0.1, Math.min(1.0, volume))
+
       const chord = [
         { freq: 698.46, time: 0.0, dur: 0.8 }, // F5
         { freq: 880.00, time: 0.15, dur: 0.9 }, // A5
@@ -49,7 +105,6 @@ class AudioTtsManager {
       ]
 
       chord.forEach(({ freq, time, dur }) => {
-        // Fundamental tone
         const osc1 = ctx.createOscillator()
         const gain1 = ctx.createGain()
         osc1.type = 'sine'
@@ -64,7 +119,6 @@ class AudioTtsManager {
         osc1.start(now + time)
         osc1.stop(now + time + dur)
 
-        // Harmonic overtone for rich metallic chime feel
         const osc2 = ctx.createOscillator()
         const gain2 = ctx.createGain()
         osc2.type = 'triangle'
@@ -85,16 +139,18 @@ class AudioTtsManager {
   }
 
   // Speak reminder message in Vietnamese or configured voice
-  public speak(message: string, options?: { volume?: number; rate?: number; pitch?: number; voiceURI?: string }): Promise<void> {
+  public speak(
+    message: string,
+    options?: { volume?: number; rate?: number; pitch?: number; voiceURI?: string }
+  ): Promise<void> {
     return new Promise((resolve) => {
       if (!this.synth || !message) {
         resolve()
         return
       }
 
-      this.stop() // Cancel any ongoing speech
+      this.stopSpeechOnly()
 
-      // Clean message string for speech
       const cleanedMessage = message
         .replace(/["“”«»]/g, '')
         .replace(/[\n\r]+/g, '. ')
@@ -106,7 +162,6 @@ class AudioTtsManager {
       utterance.pitch = options?.pitch ?? 1.0
 
       const voices = this.getVoices()
-      // Try to find matching voice
       let selectedVoice: SpeechSynthesisVoice | undefined
 
       if (options?.voiceURI) {
@@ -114,7 +169,6 @@ class AudioTtsManager {
       }
 
       if (!selectedVoice) {
-        // Priority 1: Vietnamese voice (vi-VN, HoaiMy, Nam, Google Tiếng Việt)
         selectedVoice = voices.find(
           (v) =>
             v.lang.toLowerCase().startsWith('vi') ||
@@ -127,7 +181,6 @@ class AudioTtsManager {
       }
 
       if (!selectedVoice) {
-        // Priority 2: Default or first available voice
         selectedVoice = voices.find((v) => v.default) || voices[0]
       }
 
@@ -144,7 +197,6 @@ class AudioTtsManager {
       }
 
       utterance.onerror = (e) => {
-        console.warn('TTS speech error:', e)
         this.isSpeaking = false
         resolve()
       }
@@ -154,7 +206,57 @@ class AudioTtsManager {
     })
   }
 
-  public stop() {
+  /**
+   * Start a continuous alarm loop:
+   * 1. Plays urgent ringing alarm sound
+   * 2. Reads reminder message with AI voice
+   * 3. Pauses briefly (2s)
+   * 4. Repeats continuously until stopAlarmLoop() is called
+   */
+  public startAlarmLoop(
+    message: string,
+    options: {
+      volume?: number
+      isMuted?: () => boolean
+      onSpeechChange?: (isSpeaking: boolean) => void
+    }
+  ): () => void {
+    this.isAlarmLoopRunning = true
+    const vol = (options.volume ?? 85) / 100
+
+    const runLoop = async () => {
+      while (this.isAlarmLoopRunning) {
+        // Step 1: Play urgent alarm sound if not muted
+        if (!options.isMuted || !options.isMuted()) {
+          this.playAlarmBeeps(vol)
+        }
+
+        // Wait 1.4s for alarm beeps to finish
+        await new Promise((r) => setTimeout(r, 1400))
+        if (!this.isAlarmLoopRunning) break
+
+        // Step 2: Speak message if not muted
+        if (!options.isMuted || !options.isMuted()) {
+          options.onSpeechChange?.(true)
+          await this.speak(message, { volume: options.volume ?? 85 })
+          options.onSpeechChange?.(false)
+        }
+
+        if (!this.isAlarmLoopRunning) break
+
+        // Step 3: Brief interval before ringing again
+        await new Promise((r) => setTimeout(r, 2000))
+      }
+    }
+
+    runLoop()
+
+    return () => {
+      this.stopAlarmLoop()
+    }
+  }
+
+  public stopSpeechOnly() {
     if (this.synth) {
       try {
         this.synth.cancel()
@@ -163,6 +265,15 @@ class AudioTtsManager {
       }
     }
     this.isSpeaking = false
+  }
+
+  public stopAlarmLoop() {
+    this.isAlarmLoopRunning = false
+    this.stopSpeechOnly()
+  }
+
+  public stop() {
+    this.stopAlarmLoop()
   }
 }
 
