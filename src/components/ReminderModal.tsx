@@ -3,12 +3,13 @@ import { ReminderItem, RepeatType } from '../types'
 import { SAMPLE_VIDEOS } from '../data/sampleVideos'
 import { audioTts } from '../utils/audioTts'
 import {
-  analyzeTaskCategory,
-  findMatchingOnlineVideo,
   generateAiDynamicVideo,
   CURATED_TASK_VIDEOS,
-  AiMatchedVideo,
 } from '../utils/aiVideoGenerator'
+import {
+  searchOnlineVideos,
+  SearchVideoResult,
+} from '../utils/videoSearchEngine'
 import { AiVideoPlayer } from './AiVideoPlayer'
 import {
   X,
@@ -27,6 +28,7 @@ import {
   Globe,
   Film,
   Zap,
+  Search,
 } from 'lucide-react'
 
 interface ReminderModalProps {
@@ -50,7 +52,7 @@ const QUICK_TOPICS = [
   { label: '🍱 Ăn uống / Ăn tối', query: 'Đến giờ ăn tối' },
   { label: '💧 Uống nước', query: 'Uống nước nạp năng lượng' },
   { label: '🏃 Tập thể dục', query: 'Tập thể dục giãn cơ' },
-  { label: '🌙 Đi ngủ / Nghỉ trưa', query: 'Đến giờ đi ngủ nghỉ ngơi' },
+  { label: '🌙 Đi ngủ / Nghỉ ngơi', query: 'Đến giờ đi ngủ' },
   { label: '💻 Lập trình / Code', query: 'Lập trình code dự án' },
   { label: '📚 Học bài / Đọc sách', query: 'Tập trung học bài đọc sách' },
   { label: '👥 Họp công ty', query: 'Đến giờ họp công việc' },
@@ -78,10 +80,11 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const [autoFullscreen, setAutoFullscreen] = useState(false)
   const [isPlayingTestVoice, setIsPlayingTestVoice] = useState(false)
 
-  // AI Video Generation & Matching State
+  // AI & Search States
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
+  const [isSearchingOnline, setIsSearchingOnline] = useState(false)
+  const [searchResults, setSearchResults] = useState<SearchVideoResult[]>([])
   const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null)
-  const previewVideoRef = useRef<HTMLVideoElement>(null)
 
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI
 
@@ -99,16 +102,17 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setTtsMessage(initialData.ttsMessage)
       setVolume(initialData.volume ?? 85)
       setAutoFullscreen(initialData.autoFullscreen ?? false)
+      setSearchResults([])
       setAiSuccessMessage(null)
     } else {
-      // Default new reminder (Ăn tối / bữa ăn)
       const now = new Date()
       now.setMinutes(now.getMinutes() + 2)
       const defaultTime = `${String(now.getHours()).padStart(2, '0')}:${String(
         now.getMinutes()
       ).padStart(2, '0')}`
 
-      setTitle('Nhắc nhở: Đến giờ ăn tối')
+      const defaultTitle = 'Nhắc nhở: Đến giờ ăn tối'
+      setTitle(defaultTitle)
       setDescription('')
       setTime(defaultTime)
       setRepeatType('daily')
@@ -117,10 +121,11 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setVideoUrl(CURATED_TASK_VIDEOS.meal.url)
       setVideoName(CURATED_TASK_VIDEOS.meal.title)
       setTtsEnabled(true)
-      setTtsMessage('Đã đến giờ ăn tối rồi! Bạn hãy nghỉ tay và thưởng thức bữa tối ngon miệng nhé.')
+      setTtsMessage('Đã đến giờ ăn tối rồi! Bạn hãy nghỉ ngơi và thưởng thức bữa tối ngon miệng nhé.')
       setVolume(85)
       setAutoFullscreen(false)
-      setAiSuccessMessage('Đã tự động chọn video clip ăn tối phù hợp!')
+      setSearchResults(searchOnlineVideos(defaultTitle))
+      setAiSuccessMessage('Đã tự động tìm và chọn video ăn tối phù hợp!')
     }
   }, [initialData, isOpen])
 
@@ -128,7 +133,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 
   // 1. Generate Custom AI Animated Video (6s)
   const handleGenerateAiVideo = async () => {
-    const taskName = title.trim() || 'Nhiệm vụ'
+    const taskName = title.trim() || 'Nhiệm vụ hàng ngày'
     setIsGeneratingAi(true)
     setAiSuccessMessage(null)
     try {
@@ -136,16 +141,11 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setVideoType('url')
       setVideoUrl(generated.url)
       setVideoName(generated.title)
-      setAiSuccessMessage(`✨ Đã tạo video AI thành công: "${taskName}"! Đang phát thử bên dưới.`)
+      setAiSuccessMessage(`✨ Đã tạo xong Video AI Đồ Họa 6s cho: "${taskName}"!`)
 
       if (!ttsMessage || ttsMessage.startsWith('Đã đến giờ')) {
         setTtsMessage(`Đã đến giờ cho nhiệm vụ: ${taskName}! Hãy mở video lên và hoàn thành nhé.`)
       }
-
-      // Auto play preview
-      setTimeout(() => {
-        previewVideoRef.current?.play().catch(() => {})
-      }, 200)
     } catch (err) {
       alert('Không thể tạo video AI, vui lòng thử lại!')
     } finally {
@@ -153,37 +153,52 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     }
   }
 
-  // 2. Smart Match Direct Online Video (6s)
-  const handleMatchOnlineVideo = () => {
+  // 2. Search Online Videos (returns 4 matching options with live selection)
+  const handleSearchOnlineVideos = () => {
     const taskName = title.trim() || 'Nhiệm vụ'
-    const matched = findMatchingOnlineVideo(taskName)
-    setVideoType('sample')
-    setVideoUrl(matched.url)
-    setVideoName(matched.title)
-    setAiSuccessMessage(`🌐 Đã tìm thấy clip phù hợp: "${matched.title}"!`)
-
-    if (!ttsMessage || ttsMessage.startsWith('Đã đến giờ')) {
-      setTtsMessage(`Đến giờ rồi! Hãy thực hiện nhiệm vụ ${taskName} theo video nhé.`)
-    }
+    setIsSearchingOnline(true)
+    setAiSuccessMessage(null)
 
     setTimeout(() => {
-      previewVideoRef.current?.play().catch(() => {})
-    }, 200)
+      const results = searchOnlineVideos(taskName)
+      setSearchResults(results)
+      setIsSearchingOnline(false)
+
+      if (results.length > 0) {
+        // Automatically select the first best match
+        const best = results[0]
+        setVideoType('sample')
+        setVideoUrl(best.url)
+        setVideoName(best.title)
+        setAiSuccessMessage(`🌐 Đã tìm thấy ${results.length} video trực tuyến phù hợp cho "${taskName}"!`)
+
+        if (!ttsMessage || ttsMessage.startsWith('Đã đến giờ')) {
+          setTtsMessage(`Đến giờ rồi! Hãy thực hiện nhiệm vụ ${taskName} theo video nhé.`)
+        }
+      }
+    }, 400)
   }
 
-  // 3. Quick Topic Click
+  // 3. Quick Topic selection
   const handleQuickTopic = (topicQuery: string) => {
     setTitle(topicQuery)
-    const matched = findMatchingOnlineVideo(topicQuery)
-    setVideoType('sample')
-    setVideoUrl(matched.url)
-    setVideoName(matched.title)
-    setAiSuccessMessage(`Đã chọn chủ đề: "${topicQuery}"!`)
-    setTtsMessage(`Đã đến giờ cho ${topicQuery} rồi, bạn hãy chuẩn bị nhé.`)
+    const results = searchOnlineVideos(topicQuery)
+    setSearchResults(results)
+    if (results.length > 0) {
+      setVideoType('sample')
+      setVideoUrl(results[0].url)
+      setVideoName(results[0].title)
+      setAiSuccessMessage(`Đã chọn chủ đề: "${topicQuery}"!`)
+      setTtsMessage(`Đã đến giờ cho ${topicQuery} rồi, bạn hãy chuẩn bị nhé.`)
+    }
+  }
 
-    setTimeout(() => {
-      previewVideoRef.current?.play().catch(() => {})
-    }, 200)
+  // 4. Select a specific search result card
+  const handleSelectSearchResult = (res: SearchVideoResult) => {
+    setVideoType('sample')
+    setVideoUrl(res.url)
+    setVideoName(res.title)
+    setAiSuccessMessage(`✓ Đã chọn: "${res.title}"`)
   }
 
   const handleSelectLocalVideo = async () => {
@@ -262,7 +277,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
               <h2 className="text-base font-bold text-white">
                 {initialData ? 'Chỉnh Sửa Nhắc Hẹn' : 'Tạo Nhắc Hẹn Phát Video'}
               </h2>
-              <p className="text-[11px] text-slate-400">Tự động phát video & đọc giọng nói khi đến giờ</p>
+              <p className="text-[11px] text-slate-400">Tự động quét tìm video phù hợp hoặc tạo video AI</p>
             </div>
           </div>
           <button
@@ -305,7 +320,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             </div>
           </div>
 
-          {/* QUICK TOPIC CHIPS */}
+          {/* Quick topic chips */}
           <div className="space-y-1.5">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
               <Zap className="w-3 h-3 text-amber-400" />
@@ -325,25 +340,20 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             </div>
           </div>
 
-          {/* AI SMART VIDEO GENERATOR & MATCHER - GLOWING ACTION BOX */}
+          {/* AI & ONLINE VIDEO GENERATOR / SEARCH SECTION */}
           <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950 via-purple-950/90 to-slate-900 border-2 border-indigo-500/60 shadow-xl space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-indigo-300 font-black text-xs uppercase tracking-wider">
                 <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
-                <span>Nút Tự Động Quét & Tạo Video AI (5-10s)</span>
+                <span>Nút Tìm Kiếm & Tạo Video AI Cho: "{title || 'Nhiệm vụ'}"</span>
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 font-bold border border-indigo-500/40">
-                100% Phát Mượt Mà
+                5-10 giây
               </span>
             </div>
 
-            <p className="text-xs text-slate-200 leading-relaxed">
-              Bấm nút dưới để app tự động quét <strong className="text-cyan-300">"{title || 'Nhiệm vụ'}"</strong> và tạo video đồ họa AI động hoặc lấy clip trực tuyến phù hợp:
-            </p>
-
-            {/* 2 Big Action Buttons */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              {/* Button 1: AI Motion Video (6s) */}
+              {/* Button 1: AI Dynamic Video Generator */}
               <button
                 type="button"
                 onClick={handleGenerateAiVideo}
@@ -363,32 +373,90 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                 )}
               </button>
 
-              {/* Button 2: Online Video Matching (6s) */}
+              {/* Button 2: Online Search Matching */}
               <button
                 type="button"
-                onClick={handleMatchOnlineVideo}
+                onClick={handleSearchOnlineVideos}
+                disabled={isSearchingOnline}
                 className="px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 hover:from-cyan-500 hover:to-teal-500 text-white text-xs font-black shadow-lg shadow-cyan-600/40 flex items-center justify-center gap-2 transition transform active:scale-95 cursor-pointer"
               >
-                <Globe className="w-4 h-4" />
-                <span>🌐 Tìm Clip Mạng Khớp Tiêu Đề</span>
+                {isSearchingOnline ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Đang quét video mạng...</span>
+                  </>
+                ) : (
+                  <>
+                    <Globe className="w-4 h-4" />
+                    <span>🌐 Tìm Clip Mạng Khớp Tiêu Đề</span>
+                  </>
+                )}
               </button>
             </div>
 
-            {/* Success notification */}
+            {/* Success message */}
             {aiSuccessMessage && (
               <div className="p-2.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2">
                 <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>{aiSuccessMessage}</span>
               </div>
             )}
+
+            {/* SEARCH RESULTS CARDS (Shows 4 matching video options) */}
+            {searchResults.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-indigo-500/20">
+                <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                  <span>Kết quả tìm kiếm video phù hợp ({searchResults.length} video):</span>
+                  <span className="text-[10px] text-cyan-300 font-medium">Bấm vào để chọn</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
+                  {searchResults.map((res) => {
+                    const isSelected = videoUrl === res.url
+                    return (
+                      <div
+                        key={res.id}
+                        onClick={() => handleSelectSearchResult(res)}
+                        className={`p-2 rounded-xl border flex items-center gap-2.5 cursor-pointer transition ${
+                          isSelected
+                            ? 'bg-cyan-950/60 border-cyan-400 ring-1 ring-cyan-400'
+                            : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <img
+                          src={res.thumbnail}
+                          alt={res.title}
+                          className="w-12 h-10 object-cover rounded-lg shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-bold text-white truncate">
+                            {res.title}
+                          </div>
+                          <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                            <span>{res.category}</span>
+                            <span>•</span>
+                            <span className="text-cyan-300">{res.duration}</span>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div className="w-4 h-4 rounded-full bg-cyan-500 text-slate-950 flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* VIDEO PREVIEW PLAYER (Always visible, with controls) */}
+          {/* VIDEO PREVIEW BOX */}
           <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Video className="w-4 h-4 text-cyan-400" />
-                <span>Khung Xem Trước Video (Đã Sẵn Sàng Phát)</span>
+                <span>Khung Xem Trước Video Đã Chọn</span>
               </label>
 
               {/* Source Tabs */}
@@ -431,7 +499,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
               </div>
             </div>
 
-            {/* Video Player Box with Instant Playback and AI Fallback */}
+            {/* Video Player Box with 60fps AI Fallback */}
             <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-black aspect-video max-h-56 flex items-center justify-center shadow-2xl">
               {videoUrl ? (
                 <AiVideoPlayer
