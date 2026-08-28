@@ -2,7 +2,7 @@
   "name": "video-reminder-app",
   "version": "1.0.0",
   "description": "Tool nhắc hẹn kèm phát video tự động chạy ngầm trên PC và Web Mobile",
-  "main": "dist-electron/main.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
     "dev": "vite",

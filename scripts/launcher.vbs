@@ -12,7 +12,7 @@ electronExe = projectDir & "\node_modules\electron\dist\electron.exe"
 ' Kill any previous stuck background electron processes of this app so the window ALWAYS opens fresh
 objShell.Run "powershell -NoProfile -Command ""Get-Process electron -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*Tool_Report*' } | Stop-Process -Force -ErrorAction SilentlyContinue""", 0, True
 
-' Run electron directly
-strCmd = """" & electronExe & """ """ & projectDir & """"
+' Run electron directly with main.js
+strCmd = """" & electronExe & """ """ & projectDir & "\dist-electron\main.js"""
 objShell.Run strCmd, 1, False
 Set objShell = Nothing
