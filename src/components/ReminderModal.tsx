@@ -87,7 +87,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [ttsMessage, setTtsMessage] = useState('')
   const [isTtsCustomized, setIsTtsCustomized] = useState(false)
-  const [volume, setVolume] = useState(85)
+  const [volume, setVolume] = useState(100)
   const [autoFullscreen, setAutoFullscreen] = useState(false)
   const [isPlayingTestVoice, setIsPlayingTestVoice] = useState(false)
 
@@ -137,7 +137,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setTtsEnabled(true)
       setTtsMessage(`Đã đến giờ ${defaultTitle} rồi! Bạn hãy chuẩn bị thực hiện nhé.`)
       setIsTtsCustomized(false)
-      setVolume(85)
+      setVolume(100)
       setAutoFullscreen(false)
       setSearchResults(searchOnlineVideos(defaultTitle))
       setAiSuccessMessage(null)

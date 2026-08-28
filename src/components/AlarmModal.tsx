@@ -49,9 +49,9 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
         ? reminder.ttsMessage
         : `Đã đến giờ ${reminder.title} rồi! Bạn hãy thực hiện ngay nhé.`
 
-    // Start continuous urgent alarm ringing loop!
+    // Start continuous urgent alarm ringing loop at 100% volume!
     audioTts.startAlarmLoop(voiceMessage, {
-      volume: reminder.volume ?? 90,
+      volume: 100,
       isMuted: () => isMutedRef.current,
       onSpeechChange: (speaking) => setIsTtsSpeaking(speaking),
     })

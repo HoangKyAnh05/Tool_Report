@@ -47,41 +47,69 @@ class AudioTtsManager {
     }
   }
 
-  // Play realistic rhythmic alarm beeps (urgent wake-up pattern)
-  public playAlarmBeeps(volume = 0.85) {
+  // Play high-volume, punchy rhythmic alarm beeps (urgent wake-up pattern)
+  public playAlarmBeeps(volume = 1.0) {
     try {
       const ctx = this.getAudioContext()
       if (!ctx) return
 
       const now = ctx.currentTime
-      const safeVol = Math.max(0.1, Math.min(1.0, volume))
+      const safeVol = Math.max(0.5, Math.min(1.0, volume))
 
-      // 4 quick urgent alarm beeps: beep - beep - beep - beep (two pairs)
+      // Master compressor to maximize acoustic loudness without distortion
+      const compressor = ctx.createDynamicsCompressor()
+      compressor.threshold.setValueAtTime(-10, now)
+      compressor.knee.setValueAtTime(30, now)
+      compressor.ratio.setValueAtTime(10, now)
+      compressor.attack.setValueAtTime(0.002, now)
+      compressor.release.setValueAtTime(0.2, now)
+      compressor.connect(ctx.destination)
+
+      const masterGain = ctx.createGain()
+      masterGain.gain.setValueAtTime(safeVol * 1.5, now)
+      masterGain.connect(compressor)
+
+      // 5 urgent high-impact alarm beeps with harmonic layering
       const beeps = [
-        { time: 0.00, dur: 0.12, freq: 1046.5 }, // C6
-        { time: 0.18, dur: 0.12, freq: 1318.5 }, // E6
-        { time: 0.40, dur: 0.12, freq: 1046.5 }, // C6
-        { time: 0.58, dur: 0.18, freq: 1567.98 }, // G6
-        // Finishing resonant chime
-        { time: 0.85, dur: 0.60, freq: 2093.00 }, // C7
+        { time: 0.00, dur: 0.14, freq: 1174.66 }, // D6
+        { time: 0.17, dur: 0.14, freq: 1479.98 }, // F#6
+        { time: 0.36, dur: 0.14, freq: 1174.66 }, // D6
+        { time: 0.54, dur: 0.20, freq: 1760.00 }, // A6
+        { time: 0.82, dur: 0.70, freq: 2349.32 }, // D7 loud resonant finish
       ]
 
       beeps.forEach(({ time, dur, freq }) => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
+        // 1. Primary square/triangle wave for sharp, loud acoustic presence
+        const osc1 = ctx.createOscillator()
+        const gain1 = ctx.createGain()
+        osc1.type = 'triangle'
+        osc1.frequency.setValueAtTime(freq, now + time)
 
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(freq, now + time)
+        gain1.gain.setValueAtTime(0.001, now + time)
+        gain1.gain.linearRampToValueAtTime(0.9, now + time + 0.02)
+        gain1.gain.exponentialRampToValueAtTime(0.0001, now + time + dur)
 
-        gain.gain.setValueAtTime(0.001, now + time)
-        gain.gain.linearRampToValueAtTime(safeVol * 0.5, now + time + 0.02)
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + time + dur)
+        osc1.connect(gain1)
+        gain1.connect(masterGain)
 
-        osc.connect(gain)
-        gain.connect(ctx.destination)
+        osc1.start(now + time)
+        osc1.stop(now + time + dur)
 
-        osc.start(now + time)
-        osc.stop(now + time + dur)
+        // 2. High sine harmonic for piercing clarity
+        const osc2 = ctx.createOscillator()
+        const gain2 = ctx.createGain()
+        osc2.type = 'sine'
+        osc2.frequency.setValueAtTime(freq * 1.5, now + time)
+
+        gain2.gain.setValueAtTime(0.001, now + time)
+        gain2.gain.linearRampToValueAtTime(0.5, now + time + 0.02)
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + time + dur * 0.8)
+
+        osc2.connect(gain2)
+        gain2.connect(masterGain)
+
+        osc2.start(now + time)
+        osc2.stop(now + time + dur * 0.8)
       })
     } catch (e) {
       console.warn('Alarm beep audio error:', e)
@@ -89,13 +117,13 @@ class AudioTtsManager {
   }
 
   // Play pleasant, rich alarm chime with harmonics
-  public playChime(volume = 0.85) {
+  public playChime(volume = 1.0) {
     try {
       const ctx = this.getAudioContext()
       if (!ctx) return
 
       const now = ctx.currentTime
-      const safeVol = Math.max(0.1, Math.min(1.0, volume))
+      const safeVol = Math.max(0.5, Math.min(1.0, volume))
 
       const chord = [
         { freq: 698.46, time: 0.0, dur: 0.8 }, // F5
@@ -107,11 +135,11 @@ class AudioTtsManager {
       chord.forEach(({ freq, time, dur }) => {
         const osc1 = ctx.createOscillator()
         const gain1 = ctx.createGain()
-        osc1.type = 'sine'
+        osc1.type = 'triangle'
         osc1.frequency.setValueAtTime(freq, now + time)
 
         gain1.gain.setValueAtTime(0.001, now + time)
-        gain1.gain.linearRampToValueAtTime(safeVol * 0.4, now + time + 0.03)
+        gain1.gain.linearRampToValueAtTime(safeVol * 0.8, now + time + 0.03)
         gain1.gain.exponentialRampToValueAtTime(0.0001, now + time + dur)
 
         osc1.connect(gain1)
@@ -121,24 +149,24 @@ class AudioTtsManager {
 
         const osc2 = ctx.createOscillator()
         const gain2 = ctx.createGain()
-        osc2.type = 'triangle'
+        osc2.type = 'sine'
         osc2.frequency.setValueAtTime(freq * 2, now + time)
 
         gain2.gain.setValueAtTime(0.001, now + time)
-        gain2.gain.linearRampToValueAtTime(safeVol * 0.12, now + time + 0.02)
-        gain2.gain.exponentialRampToValueAtTime(0.0001, now + time + dur * 0.6)
+        gain2.gain.linearRampToValueAtTime(safeVol * 0.4, now + time + 0.02)
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + time + dur * 0.7)
 
         osc2.connect(gain2)
         gain2.connect(ctx.destination)
         osc2.start(now + time)
-        osc2.stop(now + time + dur * 0.6)
+        osc2.stop(now + time + dur * 0.7)
       })
     } catch (e) {
       console.warn('AudioContext chime error:', e)
     }
   }
 
-  // Speak reminder message in Vietnamese or configured voice
+  // Speak reminder message in Vietnamese or configured voice with maximum clarity
   public speak(
     message: string,
     options?: { volume?: number; rate?: number; pitch?: number; voiceURI?: string }
@@ -157,7 +185,8 @@ class AudioTtsManager {
         .trim()
 
       const utterance = new SpeechSynthesisUtterance(cleanedMessage)
-      utterance.volume = (options?.volume ?? 100) / 100
+      // Force 1.0 (100% max volume)
+      utterance.volume = 1.0
       utterance.rate = options?.rate ?? 0.95
       utterance.pitch = options?.pitch ?? 1.0
 
@@ -208,9 +237,9 @@ class AudioTtsManager {
 
   /**
    * Start a continuous alarm loop:
-   * 1. Plays urgent ringing alarm sound
+   * 1. Plays loud urgent ringing alarm sound
    * 2. Reads reminder message with AI voice
-   * 3. Pauses briefly (2s)
+   * 3. Pauses briefly (1.8s)
    * 4. Repeats continuously until stopAlarmLoop() is called
    */
   public startAlarmLoop(
@@ -222,30 +251,31 @@ class AudioTtsManager {
     }
   ): () => void {
     this.isAlarmLoopRunning = true
-    const vol = (options.volume ?? 85) / 100
+    // Force maximum volume 1.0
+    const vol = 1.0
 
     const runLoop = async () => {
       while (this.isAlarmLoopRunning) {
-        // Step 1: Play urgent alarm sound if not muted
+        // Step 1: Play loud alarm sound if not muted
         if (!options.isMuted || !options.isMuted()) {
           this.playAlarmBeeps(vol)
         }
 
-        // Wait 1.4s for alarm beeps to finish
-        await new Promise((r) => setTimeout(r, 1400))
+        // Wait for alarm beeps to finish
+        await new Promise((r) => setTimeout(r, 1500))
         if (!this.isAlarmLoopRunning) break
 
-        // Step 2: Speak message if not muted
+        // Step 2: Speak message with full volume if not muted
         if (!options.isMuted || !options.isMuted()) {
           options.onSpeechChange?.(true)
-          await this.speak(message, { volume: options.volume ?? 85 })
+          await this.speak(message, { volume: 100 })
           options.onSpeechChange?.(false)
         }
 
         if (!this.isAlarmLoopRunning) break
 
         // Step 3: Brief interval before ringing again
-        await new Promise((r) => setTimeout(r, 2000))
+        await new Promise((r) => setTimeout(r, 1800))
       }
     }
 
