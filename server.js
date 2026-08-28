@@ -2,10 +2,29 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { execSync } from 'node:child_process'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3000
-const DIST_DIR = path.join(__dirname, 'dist')
+
+// Determine web root directory (prefer dist, fallback to docs or trigger build)
+let webRoot = path.join(__dirname, 'dist')
+if (!fs.existsSync(path.join(webRoot, 'index.html'))) {
+  const docsDir = path.join(__dirname, 'docs')
+  if (fs.existsSync(path.join(docsDir, 'index.html'))) {
+    webRoot = docsDir
+  } else {
+    try {
+      console.log('📦 Building web assets on the fly...')
+      execSync('npm run build:web', { stdio: 'inherit', cwd: __dirname })
+      webRoot = path.join(__dirname, 'dist')
+    } catch (e) {
+      console.error('Build on startup failed:', e)
+    }
+  }
+}
+
+console.log(`📂 Serving static files from: ${webRoot}`)
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -29,15 +48,14 @@ const MIME_TYPES = {
 }
 
 const server = http.createServer((req, res) => {
-  // Normalize request URL
   let parsedUrl = req.url.split('?')[0]
   if (parsedUrl === '/') {
     parsedUrl = '/index.html'
   }
 
-  let filePath = path.join(DIST_DIR, parsedUrl)
+  let filePath = path.join(webRoot, parsedUrl)
 
-  // Check if file exists in dist
+  // Direct file match
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath).toLowerCase()
     const contentType = MIME_TYPES[ext] || 'application/octet-stream'
@@ -46,8 +64,8 @@ const server = http.createServer((req, res) => {
     return
   }
 
-  // SPA Fallback to index.html
-  const indexPath = path.join(DIST_DIR, 'index.html')
+  // SPA fallback to index.html
+  const indexPath = path.join(webRoot, 'index.html')
   if (fs.existsSync(indexPath)) {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
     fs.createReadStream(indexPath).pipe(res)
@@ -55,7 +73,7 @@ const server = http.createServer((req, res) => {
   }
 
   res.writeHead(404, { 'Content-Type': 'text/plain' })
-  res.end('404 Not Found - Build dist directory first (npm run build:web)')
+  res.end('404 Not Found')
 })
 
 server.listen(PORT, () => {
