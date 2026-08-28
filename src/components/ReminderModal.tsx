@@ -29,7 +29,10 @@ import {
   Film,
   Zap,
   Search,
+  Image as ImageIcon,
+  Music,
 } from 'lucide-react'
+import { getThemeImageForTitle } from '../utils/imageThemeEngine'
 
 interface ReminderModalProps {
   isOpen: boolean
@@ -49,18 +52,19 @@ const DAYS_OF_WEEK = [
 ]
 
 const QUICK_TOPICS = [
-  { label: '🚽 Vệ sinh cá nhân', query: 'Đến giờ đi vệ sinh' },
-  { label: '💊 Uống thuốc', query: 'Uống thuốc đúng giờ' },
-  { label: '🍱 Ăn uống / Ăn tối', query: 'Đến giờ ăn tối' },
-  { label: '💧 Uống nước', query: 'Uống nước nạp năng lượng' },
+  { label: '🎤 Học hát / Âm nhạc', query: 'Đến giờ học hát' },
+  { label: '📚 Học bài / Đọc sách', query: 'Tập trung học bài đọc sách' },
   { label: '🏃 Tập thể dục', query: 'Tập thể dục giãn cơ' },
-  { label: '🏊 Đi bơi / Bơi lội', query: 'Đến giờ đi bơi' },
-  { label: '🎮 Giải trí / Game', query: 'Đến giờ giải trí chơi game' },
-  { label: '🧹 Dọn dẹp phòng', query: 'Dọn dẹp phòng ngủ gọn gàng' },
+  { label: '💧 Uống nước', query: 'Uống nước nạp năng lượng' },
+  { label: '🍱 Ăn uống / Ăn tối', query: 'Đến giờ ăn tối' },
   { label: '🌙 Đi ngủ / Nghỉ ngơi', query: 'Đến giờ đi ngủ' },
   { label: '💻 Lập trình / Code', query: 'Lập trình code dự án' },
-  { label: '📚 Học bài / Đọc sách', query: 'Tập trung học bài đọc sách' },
   { label: '👥 Họp công ty', query: 'Đến giờ họp công việc' },
+  { label: '🏊 Đi bơi / Bơi lội', query: 'Đến giờ đi bơi' },
+  { label: '💊 Uống thuốc', query: 'Uống thuốc đúng giờ' },
+  { label: '🚽 Vệ sinh cá nhân', query: 'Đến giờ đi vệ sinh' },
+  { label: '🎮 Giải trí / Game', query: 'Đến giờ giải trí chơi game' },
+  { label: '🧹 Dọn dẹp phòng', query: 'Dọn dẹp phòng ngủ gọn gàng' },
 ]
 
 export const ReminderModal: React.FC<ReminderModalProps> = ({
@@ -78,6 +82,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const [videoType, setVideoType] = useState<'local' | 'sample' | 'url'>('sample')
   const [videoUrl, setVideoUrl] = useState('')
   const [videoName, setVideoName] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
 
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const [ttsMessage, setTtsMessage] = useState('')
@@ -104,6 +109,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setVideoType(initialData.videoType)
       setVideoUrl(initialData.videoUrl)
       setVideoName(initialData.videoName)
+      setImageUrl(initialData.imageUrl || getThemeImageForTitle(initialData.title).imageUrl)
       setTtsEnabled(initialData.ttsEnabled)
       setTtsMessage(initialData.ttsMessage)
       setIsTtsCustomized(true)
@@ -127,6 +133,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setVideoType('sample')
       setVideoUrl(CURATED_TASK_VIDEOS.meal.url)
       setVideoName('Video nhắc nhở')
+      setImageUrl(getThemeImageForTitle(defaultTitle).imageUrl)
       setTtsEnabled(true)
       setTtsMessage(`Đã đến giờ ${defaultTitle} rồi! Bạn hãy chuẩn bị thực hiện nhé.`)
       setIsTtsCustomized(false)
@@ -158,6 +165,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 
   const handleTitleChange = (newTitle: string) => {
     setTitle(newTitle)
+    const theme = getThemeImageForTitle(newTitle)
+    setImageUrl(theme.imageUrl)
     if (!isTtsCustomized) {
       const trimmed = newTitle.trim()
       if (trimmed) {
@@ -317,6 +326,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       repeatType,
       customDays: repeatType === 'custom_days' ? customDays : [0, 1, 2, 3, 4, 5, 6],
       enabled: initialData ? initialData.enabled : true,
+      imageUrl: imageUrl || getThemeImageForTitle(title).imageUrl,
       videoType,
       videoUrl: videoUrl || CURATED_TASK_VIDEOS.meal.url,
       videoName: videoName || 'Video nhắc hẹn',
@@ -518,86 +528,75 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             )}
           </div>
 
-          {/* VIDEO PREVIEW BOX */}
+          {/* IMAGE & VOICE PREVIEW BOX */}
           <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Video className="w-4 h-4 text-cyan-400" />
-                <span>Khung Xem Trước Video Đã Chọn</span>
+              <label className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-indigo-400" />
+                <span>Hình Ảnh Chủ Đề & Giọng Đọc AI Khi Báo Thức</span>
               </label>
 
-              {/* Source Tabs */}
-              <div className="flex items-center gap-1">
+              <div className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <span>{getThemeImageForTitle(title).category}</span>
+              </div>
+            </div>
+
+            {/* Visual Image Preview */}
+            <div className="relative rounded-2xl overflow-hidden border border-indigo-500/30 bg-slate-950 aspect-video max-h-56 flex items-center justify-center shadow-2xl group">
+              <img
+                src={imageUrl || getThemeImageForTitle(title).imageUrl}
+                alt={title}
+                className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&q=80'
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-white/20 text-[11px] font-bold text-indigo-300">
+                <span>{getThemeImageForTitle(title).title}</span>
+              </div>
+
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
+                <div className="text-xs font-bold text-white drop-shadow truncate max-w-[320px]">
+                  {title || 'Chưa đặt tiêu đề'}
+                </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setVideoType('sample')
-                    setTtsEnabled(true)
-                  }}
-                  className={`text-[11px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
-                    videoType === 'sample'
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
+                  onClick={handleTestVoice}
+                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg transition cursor-pointer shrink-0"
                 >
-                  Mẫu & AI
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVideoType('local')
-                    setTtsEnabled(false)
-                  }}
-                  className={`text-[11px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
-                    videoType === 'local'
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  File từ PC
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setVideoType('url')}
-                  className={`text-[11px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
-                    videoType === 'url'
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Link URL
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>{isPlayingTestVoice ? 'Đang đọc...' : 'Thử giọng AI'}</span>
                 </button>
               </div>
             </div>
 
-            {/* Video Player Box with 60fps AI Fallback */}
-            <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-black aspect-video max-h-56 flex items-center justify-center shadow-2xl">
-              {videoUrl ? (
-                <AiVideoPlayer
-                  key={videoUrl}
-                  src={videoUrl}
-                  taskTitle={title || 'Nhiệm vụ'}
-                  isLocal={videoType === 'local'}
-                  autoPlay={true}
-                  loop={true}
-                  controls={true}
-                  volume={volume}
+            {/* Custom image option */}
+            <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+              <span className="text-[11px] text-emerald-400 font-medium">
+                ✓ Hình ảnh & giọng đọc AI sẽ tự động kích hoạt khi đến {time}
+              </span>
+              <label className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer underline flex items-center gap-1">
+                <span>Chọn ảnh từ máy...</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      const reader = new FileReader()
+                      reader.onload = (event) => {
+                        if (event.target?.result) {
+                          setImageUrl(event.target.result as string)
+                        }
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                  }}
+                  className="hidden"
                 />
-              ) : (
-                <div className="text-center p-6 text-slate-500">
-                  <Video className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <span className="text-xs">Chưa có video được chọn</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-              <span className="font-semibold text-slate-200 truncate max-w-[280px]">
-                {videoName || 'Video đã chọn'}
-              </span>
-              <span className="text-[11px] text-emerald-400 font-bold">
-                ✓ Sẽ tự động phát khi đến {time}
-              </span>
+              </label>
             </div>
 
             {/* Local file picker */}

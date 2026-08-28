@@ -9,6 +9,9 @@ export interface ReminderItem {
   customDays: number[]; // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
   enabled: boolean;
   
+  // Image & Display settings
+  imageUrl?: string;
+  
   // Video settings
   videoType: 'local' | 'sample' | 'url';
   videoUrl: string;

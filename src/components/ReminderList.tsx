@@ -10,7 +10,9 @@ import {
   CheckCircle2,
   Calendar,
   AlertCircle,
+  Image as ImageIcon,
 } from 'lucide-react'
+import { getThemeImageForTitle } from '../utils/imageThemeEngine'
 
 interface ReminderListProps {
   reminders: ReminderItem[]
@@ -115,19 +117,19 @@ export const ReminderList: React.FC<ReminderListProps> = ({
                     </p>
                   )}
 
-                  {/* Attached Video & TTS tags */}
+                  {/* Attached Image Theme & TTS tags */}
                   <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                    <div className="inline-flex items-center gap-1.5 text-xs text-cyan-300 bg-cyan-950/40 border border-cyan-500/20 px-2.5 py-1 rounded-lg">
-                      <Video className="w-3.5 h-3.5" />
+                    <div className="inline-flex items-center gap-1.5 text-xs text-indigo-300 bg-indigo-950/40 border border-indigo-500/20 px-2.5 py-1 rounded-lg">
+                      <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
                       <span className="font-medium max-w-[200px] truncate">
-                        {item.videoName || 'Video mặc định'}
+                        {getThemeImageForTitle(item.title).category}
                       </span>
                     </div>
 
                     {item.ttsEnabled && (
                       <div className="inline-flex items-center gap-1.5 text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
-                        <Volume2 className="w-3.5 h-3.5" />
-                        <span className="font-medium">Giọng đọc: Có</span>
+                        <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="font-medium">Giọng đọc AI: Có</span>
                       </div>
                     )}
 

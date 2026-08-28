@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { ReminderItem } from '../types'
 import { audioTts } from '../utils/audioTts'
-import { AiVideoPlayer } from './AiVideoPlayer'
+import { getThemeImageForTitle } from '../utils/imageThemeEngine'
 import confetti from 'canvas-confetti'
 import {
   BellRing,
@@ -13,6 +13,8 @@ import {
   Sparkles,
   Maximize2,
   Minimize2,
+  Mic,
+  Music,
 } from 'lucide-react'
 
 interface AlarmModalProps {
@@ -29,22 +31,29 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
   const [isMuted, setIsMuted] = useState(false)
   const [isTtsSpeaking, setIsTtsSpeaking] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>(null)
+
+  // Resolve best matched image for the reminder title
+  const themeInfo = reminder ? getThemeImageForTitle(reminder.title) : null
+  const displayImageUrl = reminder?.imageUrl || (reminder?.videoUrl?.startsWith('http') && reminder.videoUrl.match(/\.(jpg|jpeg|png|webp|svg)/i) ? reminder.videoUrl : themeInfo?.imageUrl)
 
   useEffect(() => {
     if (!reminder) return
 
-    // Trigger celebratory sound chime & TTS speech (only if enabled or non-local)
+    // Trigger sound chime & TTS speech
     const triggerAudio = async () => {
+      audioTts.playChime((reminder.volume || 85) / 100)
       if (reminder.ttsEnabled && reminder.ttsMessage) {
-        audioTts.playChime((reminder.volume || 85) / 100)
         setIsTtsSpeaking(true)
         await audioTts.speak(reminder.ttsMessage, {
           volume: reminder.volume || 85,
         })
         setIsTtsSpeaking(false)
-      } else if (reminder.videoType !== 'local') {
-        audioTts.playChime((reminder.volume || 85) / 100)
+      } else {
+        setIsTtsSpeaking(true)
+        await audioTts.speak(`Đã đến giờ ${reminder.title} rồi! Bạn hãy thực hiện ngay nhé.`, {
+          volume: reminder.volume || 85,
+        })
+        setIsTtsSpeaking(false)
       }
     }
 
@@ -88,20 +97,22 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
     }
   }
 
+  const isLocalVideo = reminder.videoType === 'local' && reminder.videoUrl && !reminder.videoUrl.startsWith('http')
+
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-slate-950/95 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-slate-950/95 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-300 select-none">
       {/* Top Floating Notification Banner */}
       <div className="w-full bg-gradient-to-r from-rose-600 via-pink-600 to-indigo-600 py-3 px-6 shadow-2xl flex items-center justify-between z-20">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center animate-pulse">
+          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center animate-pulse shadow-sm">
             <BellRing className="w-5 h-5 text-white" />
           </div>
           <div>
             <div className="text-[11px] uppercase tracking-wider text-rose-100 font-bold flex items-center gap-2">
               <span>ĐẾN GIỜ NHẮC HẸN: {reminder.time}</span>
               {isTtsSpeaking && (
-                <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white/20 text-white animate-pulse">
-                  <Volume2 className="w-3 h-3" /> Đang đọc lời nhắc...
+                <span className="inline-flex items-center gap-1.5 text-[10px] px-2.5 py-0.5 rounded-full bg-white/20 text-white font-medium animate-pulse">
+                  <Volume2 className="w-3 h-3 text-emerald-300" /> Giọng AI đang đọc...
                 </span>
               )}
             </div>
@@ -129,31 +140,96 @@ export const AlarmModal: React.FC<AlarmModalProps> = ({
         </div>
       </div>
 
-      {/* Main Video & Content Area */}
+      {/* Main Image & Content Area */}
       <div className="flex-1 relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-        {/* Glowing Ambient Background */}
-        <div className="absolute inset-0 bg-radial from-indigo-900/30 via-slate-950/80 to-slate-950 pointer-events-none" />
-
-        <div className="relative w-full max-w-4xl h-[65vh] rounded-2xl overflow-hidden border border-indigo-500/40 shadow-2xl bg-black flex items-center justify-center">
-          <AiVideoPlayer
-            src={reminder.videoUrl}
-            taskTitle={reminder.title}
-            isLocal={reminder.videoType === 'local'}
-            autoPlay={true}
-            loop={true}
-            controls={true}
-            volume={reminder.volume ?? 85}
-            isMuted={isMuted}
-            className="w-full h-full"
+        {/* Soft Ambient Blurred Background Glow */}
+        {displayImageUrl && (
+          <div
+            className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-25 scale-110 pointer-events-none transition-all duration-1000"
+            style={{ backgroundImage: `url(${displayImageUrl})` }}
           />
+        )}
+        <div className="absolute inset-0 bg-radial from-indigo-900/20 via-slate-950/70 to-slate-950 pointer-events-none" />
 
-          {/* Subtitle / TTS Message Overlay */}
-          {reminder.ttsEnabled && reminder.ttsMessage && (
-            <div className="absolute bottom-6 left-6 right-6 p-3.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-white/15 text-center shadow-lg pointer-events-none z-30">
-              <p className="text-sm sm:text-base font-bold text-emerald-300">
-                "{reminder.ttsMessage}"
-              </p>
-            </div>
+        {/* Central Display Card */}
+        <div className="relative w-full max-w-4xl h-[65vh] rounded-3xl overflow-hidden border border-indigo-500/40 shadow-2xl bg-slate-900 flex flex-col justify-between group">
+          {isLocalVideo ? (
+            <video
+              src={reminder.videoUrl}
+              autoPlay
+              loop
+              controls
+              muted={isMuted}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <>
+              {/* Thematic Content Image */}
+              <div className="absolute inset-0 w-full h-full overflow-hidden">
+                <img
+                  src={displayImageUrl}
+                  alt={reminder.title}
+                  className="w-full h-full object-cover transition-transform duration-10000 ease-out hover:scale-105"
+                  onError={(e) => {
+                    // Fallback image if network fails
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&q=80'
+                  }}
+                />
+                {/* Gradient Overlays for Readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-transparent to-transparent" />
+              </div>
+
+              {/* Top Card Badge */}
+              <div className="relative z-10 p-5 flex items-center justify-between">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-950/80 backdrop-blur-md border border-white/20 text-xs font-bold text-indigo-300 shadow-md">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{themeInfo?.category || 'Nhắc nhở công việc'}</span>
+                </div>
+
+                {isTtsSpeaking && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/80 backdrop-blur-md border border-emerald-500/30 text-xs font-bold text-emerald-300 animate-pulse shadow-md">
+                    <Mic className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Giọng AI đang phát</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Sound Wave Animation Visualizer Bars */}
+              <div className="relative z-10 flex flex-col items-center justify-center my-auto px-6 text-center">
+                {isTtsSpeaking && (
+                  <div className="flex items-center justify-center gap-1.5 h-12 mb-3">
+                    {[12, 24, 38, 48, 28, 44, 32, 20, 40, 26, 16].map((h, i) => (
+                      <div
+                        key={i}
+                        className="w-1.5 bg-gradient-to-t from-indigo-400 to-cyan-300 rounded-full animate-pulse"
+                        style={{
+                          height: `${h}px`,
+                          animationDelay: `${i * 90}ms`,
+                          animationDuration: '600ms',
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom Card Info & Subtitles */}
+              <div className="relative z-10 p-6 sm:p-8 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-white drop-shadow-md">
+                    {reminder.title}
+                  </span>
+                </div>
+
+                {/* Subtitle / Voice Message Quote */}
+                <div className="p-4 rounded-2xl bg-slate-950/80 backdrop-blur-md border border-white/15 text-center shadow-xl">
+                  <p className="text-sm sm:text-base font-bold text-emerald-300 leading-relaxed">
+                    "{reminder.ttsMessage || `Đã đến giờ ${reminder.title} rồi! Bạn hãy thực hiện ngay nhé.`}"
+                  </p>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
