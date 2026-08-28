@@ -1,0 +1,43 @@
+{
+  "name": "video-reminder-app",
+  "version": "1.0.0",
+  "description": "Tool nhắc hẹn kèm phát video tự động chạy ngầm trên PC và Web Mobile",
+  "main": "dist-electron/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "create-shortcut": "powershell -ExecutionPolicy Bypass -File ./scripts/create-desktop-shortcut.ps1"
+  },
+  "keywords": [
+    "reminder",
+    "alarm",
+    "video-player",
+    "electron",
+    "typescript"
+  ],
+  "author": "HoangKyAnh",
+  "license": "MIT",
+  "dependencies": {
+    "canvas-confetti": "^1.9.4",
+    "lucide-react": "^1.35.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^26.4.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^6.1.1",
+    "cross-env": "^10.1.0",
+    "electron": "^44.0.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vite-plugin-electron": "^1.1.1",
+    "vite-plugin-electron-renderer": "^1.0.0"
+  }
+}
