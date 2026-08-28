@@ -2,7 +2,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import electron from 'vite-plugin-electron'
-import renderer from 'vite-plugin-electron-renderer'
 import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -28,21 +27,29 @@ function copyPreloadPlugin() {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  base: './',
-  plugins: [
-    tailwindcss(),
-    react(),
-    electron([
-      {
-        entry: 'electron/main.ts',
+export default defineConfig(({ mode }) => {
+  const isWeb = process.env.BUILD_TARGET === 'web' || mode === 'web'
+
+  return {
+    base: './',
+    plugins: [
+      tailwindcss(),
+      react(),
+      ...(!isWeb
+        ? [
+            electron([
+              {
+                entry: 'electron/main.ts',
+              },
+            ]),
+            copyPreloadPlugin(),
+          ]
+        : []),
+    ],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
       },
-    ]),
-    copyPreloadPlugin(),
-  ],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
     },
-  },
+  }
 })
