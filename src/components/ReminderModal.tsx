@@ -122,11 +122,17 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   }
 
   const handleSearchOnlineImages = async (customQuery?: string) => {
-    const q = (customQuery || imageSearchQuery || title || 'điện thoại').trim()
+    const q = (customQuery !== undefined ? customQuery : (imageSearchQuery || title || 'pubg')).trim()
+    if (!q) return
     setIsSearchingImages(true)
     try {
       const results = await searchOnlineImages(q)
       setOnlineImageResults(results)
+      if (results.length > 0) {
+        setAiSuccessMessage(`🔍 Đã tìm thấy ${results.length} hình ảnh trực tuyến cho: "${q}"!`)
+      } else {
+        setAiSuccessMessage(`Không tìm thấy ảnh nào cho "${q}", bạn hãy thử từ khóa khác nhé!`)
+      }
     } catch (e) {
       console.warn('Image search error:', e)
     } finally {
@@ -634,9 +640,17 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  setShowImageSearch(!showImageSearch)
-                  if (!showImageSearch && onlineImageResults.length === 0) {
-                    handleSearchOnlineImages(title)
+                  const willShow = !showImageSearch
+                  setShowImageSearch(willShow)
+                  if (willShow) {
+                    // Extract clean keyword from current reminder title
+                    let cleaned = title
+                      .replace(/^(Đến giờ|Nhắc nhở:|Nhắc hẹn:|Giờ|Lịch:)\s*/i, '')
+                      .replace(/^(hãy|bạn hãy|chuẩn bị)\s*/i, '')
+                      .trim()
+                    if (!cleaned) cleaned = title.trim() || 'pubg'
+                    setImageSearchQuery(cleaned)
+                    handleSearchOnlineImages(cleaned)
                   }
                 }}
                 className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
@@ -725,14 +739,19 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                       type="text"
                       value={imageSearchQuery}
                       onChange={(e) => setImageSearchQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearchOnlineImages()}
-                      placeholder={title ? `Tìm ảnh cho "${title}"...` : 'Nhập từ khóa ảnh (VD: điện thoại, chó con, học bài)...'}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleSearchOnlineImages(imageSearchQuery)
+                        }
+                      }}
+                      placeholder="Nhập từ khóa ảnh (VD: pubg, điện thoại, game, chó con)..."
                       className="w-full pl-8 pr-3 py-2 rounded-xl glass-input text-xs text-white"
                     />
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleSearchOnlineImages()}
+                    onClick={() => handleSearchOnlineImages(imageSearchQuery)}
                     disabled={isSearchingImages}
                     className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
                   >
@@ -747,7 +766,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 
                 {/* Quick query chips */}
                 <div className="flex flex-wrap gap-1.5 text-[10px]">
-                  {['điện thoại', 'học bài', 'nghe nhạc', 'thể dục', 'uống nước', 'ăn cơm', 'nghỉ ngơi'].map((chip, idx) => (
+                  {['pubg', 'chơi game', 'điện thoại', 'học bài', 'nghe nhạc', 'thể dục', 'uống nước', 'ăn cơm'].map((chip, idx) => (
                     <button
                       type="button"
                       key={idx}

@@ -47,7 +47,60 @@ const MIME_TYPES = {
   '.ttf': 'font/ttf',
 }
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
+  // Online Image Search API
+  if (req.url && req.url.startsWith('/api/search-images')) {
+    try {
+      const urlObj = new URL(req.url, 'http://localhost')
+      const q = (urlObj.searchParams.get('q') || '').trim()
+      if (!q) {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify([]))
+        return
+      }
+
+      const res1 = await fetch('https://duckduckgo.com/?q=' + encodeURIComponent(q), {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+      })
+      const body1 = await res1.text()
+      const match = body1.match(/vqd=([\'\"]?)([0-9-]+)\1/) || body1.match(/vqd=([0-9-]+)/)
+      if (!match) {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify([]))
+        return
+      }
+      const vqd = match[2] || match[1]
+      const imgUrl = `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(q)}&vqd=${vqd}&f=,,,;&p=1`
+      const res2 = await fetch(imgUrl, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Referer: 'https://duckduckgo.com/',
+        },
+      })
+      const data = await res2.json()
+      const list = (data.results || []).slice(0, 24).map((r) => ({
+        title: r.title || q,
+        imageUrl: r.image,
+        source: 'Google / Web',
+      }))
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+      })
+      res.end(JSON.stringify(list))
+      return
+    } catch (err) {
+      console.warn('Server image search error:', err)
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify([]))
+      return
+    }
+  }
+
   let parsedUrl = req.url.split('?')[0]
   if (parsedUrl === '/') {
     parsedUrl = '/index.html'

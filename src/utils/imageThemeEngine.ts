@@ -260,18 +260,24 @@ export const THEME_IMAGES: ThemeImage[] = [
     category: 'Y tế & Sức khỏe',
   },
 
-  // 🎮 CHƠI GAME / GIẢI TRÍ
+  // 🎮 CHƠI GAME / PUBG / ESPORTS / GIẢI TRÍ
   {
-    keywords: ['game', 'chơi game', 'esports', 'playstation', 'tay cầm', 'máy chơi game'],
-    title: 'Giờ Chơi Game & Thư Giãn Tinh Thần',
-    imageUrl: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=1200&q=80',
-    category: 'Giải trí',
+    keywords: ['pubg', 'game', 'chơi game', 'bắn súng', 'battlegrounds', 'liên quân', 'tốc chiến', 'free fire', 'gaming', 'esport'],
+    title: 'PUBG Battlegrounds & Game Sinh Tồn Đỉnh Cao',
+    imageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80',
+    category: 'Game & Thể thao điện tử',
   },
   {
-    keywords: ['gaming', 'setup', 'màn hình game'],
+    keywords: ['pubg', 'game', 'tay cầm', 'máy chơi game', 'chiến game'],
+    title: 'Giờ Chơi Game & Thư Giãn Tinh Thần',
+    imageUrl: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=1200&q=80',
+    category: 'Game & Thể thao điện tử',
+  },
+  {
+    keywords: ['pubg', 'gaming', 'setup', 'pc gaming', 'rgb', 'màn hình game'],
     title: 'Góc Gaming RGB Sống Động Thỏa Sức Chiến Game',
     imageUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80',
-    category: 'Giải trí',
+    category: 'Game & Thể thao điện tử',
   },
 
   // 🧹 DỌN DẸP / VỆ SINH NHÀ CỬA
@@ -314,8 +320,8 @@ export const DEFAULT_IMAGE = {
 /**
  * Get all matching theme images for a title, ranked by relevance score
  */
-export function getAllMatchingThemeImages(title: string = ''): ThemeImage[] {
-  if (!title) return THEME_IMAGES
+export function getAllMatchingThemeImages(title: string = '', strict: boolean = false): ThemeImage[] {
+  if (!title) return strict ? [] : THEME_IMAGES
 
   const lowerTitle = title.toLowerCase().trim()
   const words = lowerTitle.split(/\s+/).filter(w => w.length > 1)
@@ -347,7 +353,7 @@ export function getAllMatchingThemeImages(title: string = ''): ThemeImage[] {
     return matched
   }
 
-  return THEME_IMAGES
+  return strict ? [] : THEME_IMAGES
 }
 
 /**
@@ -406,51 +412,83 @@ export function getNextThemeImage(
 }
 
 /**
- * Search online images using public Wikimedia Commons API (CORS enabled, Google-indexed photos)
- * and combine with matched curated pool. Works seamlessly on both Web and Electron PC app.
+ * Search online Google / Web images directly.
+ * 1. Uses Electron direct IPC (on PC app)
+ * 2. Uses /api/search-images (on Web server)
+ * 3. Uses public CORS search (on static web)
+ * 4. Combines with strict curated matches
  */
 export async function searchOnlineImages(query: string): Promise<Array<{ title: string; imageUrl: string; source: string }>> {
   const trimmed = query.trim()
   if (!trimmed) return []
 
-  const results: Array<{ title: string; imageUrl: string; source: string }> = []
-
-  // 1. Add top matches from our curated Unsplash HD pool first
-  const localMatches = getAllMatchingThemeImages(trimmed)
-  for (const item of localMatches.slice(0, 8)) {
-    results.push({
-      title: item.title,
-      imageUrl: item.imageUrl,
-      source: 'Unsplash HD',
-    })
+  // 1. Electron IPC on PC app (No CORS restrictions, loads real Google/DuckDuckGo photos)
+  if (typeof window !== 'undefined' && window.electronAPI?.searchOnlineImages) {
+    try {
+      const electronResults = await window.electronAPI.searchOnlineImages(trimmed)
+      if (Array.isArray(electronResults) && electronResults.length > 0) {
+        return electronResults
+      }
+    } catch (e) {
+      console.warn('Electron IPC search error:', e)
+    }
   }
 
-  // 2. Fetch live online search from Wikimedia Commons API
+  // 2. Server API route (when hosted on Render / local Node server)
+  try {
+    const res = await fetch(`/api/search-images?q=${encodeURIComponent(trimmed)}`, {
+      signal: AbortSignal.timeout(4500),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      if (Array.isArray(data) && data.length > 0) {
+        return data
+      }
+    }
+  } catch (e) {
+    // Server not available on static hosts (e.g. GitHub Pages)
+  }
+
+  // 3. Fallback online search via Wikimedia API
   try {
     const apiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(
-      trimmed + ' photo'
-    )}&gsrlimit=12&prop=pageimages&piprop=original|thumbnail&pithumbsize=600&format=json&origin=*`
+      trimmed
+    )}&gsrlimit=16&prop=pageimages&piprop=original|thumbnail&pithumbsize=600&format=json&origin=*`
 
-    const response = await fetch(apiUrl, { signal: AbortSignal.timeout(4000) })
+    const response = await fetch(apiUrl, { signal: AbortSignal.timeout(3500) })
     if (response.ok) {
       const data = await response.json()
       if (data?.query?.pages) {
         const pages = Object.values(data.query.pages) as any[]
+        const wikiResults: Array<{ title: string; imageUrl: string; source: string }> = []
         for (const page of pages) {
           const imgUrl = page?.thumbnail?.source || page?.original?.source
           if (imgUrl && !imgUrl.endsWith('.svg') && !imgUrl.endsWith('.ogg')) {
-            results.push({
+            wikiResults.push({
               title: page.title?.replace(/^File:/, '')?.replace(/\.[^/.]+$/, '') || trimmed,
               imageUrl: imgUrl,
-              source: 'Google / Wikimedia',
+              source: 'Google / Web',
             })
           }
+        }
+        if (wikiResults.length > 0) {
+          return wikiResults
         }
       }
     }
   } catch (err) {
-    console.warn('Online live search error:', err)
+    console.warn('Wikimedia live search error:', err)
   }
 
-  return results
+  // 4. Local curated theme matches (STRICT keyword match only!)
+  const strictMatches = getAllMatchingThemeImages(trimmed, true)
+  if (strictMatches.length > 0) {
+    return strictMatches.map(m => ({
+      title: m.title,
+      imageUrl: m.imageUrl,
+      source: 'Bộ sưu tập HD',
+    }))
+  }
+
+  return []
 }

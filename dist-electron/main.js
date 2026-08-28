@@ -181,7 +181,25 @@ function T() {
 			};
 		}
 		return null;
-	}), a.handle("shell:open-external", (e, t) => t && (t.startsWith("http://") || t.startsWith("https://")) ? (l.openExternal(t), !0) : !1), a.handle("app:is-packaged", () => r.isPackaged);
+	}), a.handle("shell:open-external", (e, t) => t && (t.startsWith("http://") || t.startsWith("https://")) ? (l.openExternal(t), !0) : !1), a.handle("app:is-packaged", () => r.isPackaged), a.handle("image:search-online", async (e, t) => {
+		try {
+			let e = (t || "").trim();
+			if (!e) return [];
+			let n = await (await fetch("https://duckduckgo.com/?q=" + encodeURIComponent(e), { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" } })).text(), r = n.match(/vqd=([\'\"]?)([0-9-]+)\1/) || n.match(/vqd=([0-9-]+)/);
+			if (!r) return [];
+			let i = r[2] || r[1], a = `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(e)}&vqd=${i}&f=,,,;&p=1`;
+			return ((await (await fetch(a, { headers: {
+				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+				Referer: "https://duckduckgo.com/"
+			} })).json()).results || []).slice(0, 24).map((t) => ({
+				title: t.title || e,
+				imageUrl: t.image,
+				source: "Google / Web"
+			}));
+		} catch (e) {
+			return console.warn("Electron online image search error:", e), [];
+		}
+	});
 }
 r.whenReady().then(() => {
 	_ && d.appendFileSync(_, "app.whenReady() fired!\n");
