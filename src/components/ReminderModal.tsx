@@ -67,7 +67,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 
   // AI Video State
   const [isGeneratingAi, setIsGeneratingAi] = useState(false)
-  const [aiVideoInfo, setAiVideoInfo] = useState<AiMatchedVideo | null>(null)
+  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null)
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false)
   const previewVideoRef = useRef<HTMLVideoElement>(null)
 
@@ -87,7 +87,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setTtsMessage(initialData.ttsMessage)
       setVolume(initialData.volume ?? 85)
       setAutoFullscreen(initialData.autoFullscreen ?? false)
-      setAiVideoInfo(null)
+      setAiSuccessMessage(null)
     } else {
       // Default new reminder
       const now = new Date()
@@ -96,7 +96,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
         now.getMinutes()
       ).padStart(2, '0')}`
 
-      setTitle('Nhắc nhở: Tập thể dục vươn vai')
+      setTitle('Nhắc nhở: Đến giờ ăn tối')
       setDescription('')
       setTime(defaultTime)
       setRepeatType('daily')
@@ -105,30 +105,31 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setVideoUrl(SAMPLE_VIDEOS[0].url)
       setVideoName(SAMPLE_VIDEOS[0].title)
       setTtsEnabled(true)
-      setTtsMessage('Đã đến giờ tập thể dục rồi! Bạn hãy đứng dậy vươn vai theo video nhé.')
+      setTtsMessage('Đã đến giờ ăn tối rồi! Bạn hãy nghỉ ngơi và ăn tối ngon miệng nhé.')
       setVolume(85)
       setAutoFullscreen(false)
-      setAiVideoInfo(null)
+      setAiSuccessMessage(null)
     }
     setIsPreviewPlaying(false)
   }, [initialData, isOpen])
 
   if (!isOpen) return null
 
-  // 1. Auto generate AI Motion Video (5-6s) tailored to exact task title
+  // 1. Auto generate AI Motion Video (6s) tailored to exact task title
   const handleGenerateAiVideo = async () => {
     const taskName = title.trim() || 'Nhiệm vụ hàng ngày'
     setIsGeneratingAi(true)
+    setAiSuccessMessage(null)
     try {
       const generated = await generateAiDynamicVideo(taskName)
-      setAiVideoInfo(generated)
       setVideoType('url')
       setVideoUrl(generated.url)
       setVideoName(generated.title)
+      setAiSuccessMessage(`Đã tạo video AI thành công cho "${taskName}"!`)
 
-      // Auto update TTS message if not customized
+      // Auto update TTS message if needed
       if (!ttsMessage || ttsMessage.startsWith('Đã đến giờ')) {
-        setTtsMessage(`Đã đến giờ cho nhiệm vụ: ${taskName}! Hãy mở video lên và hoàn thành nhé.`)
+        setTtsMessage(`Đã đến giờ cho nhiệm vụ: ${taskName}! Hãy mở video lên và thực hiện nhé.`)
       }
     } catch (err) {
       alert('Không thể tạo video AI, vui lòng thử lại!')
@@ -141,10 +142,10 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const handleMatchOnlineVideo = () => {
     const taskName = title.trim() || 'Nhiệm vụ'
     const matched = findMatchingOnlineVideo(taskName)
-    setAiVideoInfo(matched)
     setVideoType('sample')
     setVideoUrl(matched.url)
     setVideoName(matched.title)
+    setAiSuccessMessage(`Đã tìm thấy clip trực tuyến phù hợp cho "${taskName}"!`)
 
     if (!ttsMessage || ttsMessage.startsWith('Đã đến giờ')) {
       setTtsMessage(`Đến giờ rồi! Hãy thực hiện nhiệm vụ ${taskName} theo video nhé.`)
@@ -158,7 +159,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
         setVideoType('local')
         setVideoUrl(res.path)
         setVideoName(res.name)
-        setAiVideoInfo(null)
+        setAiSuccessMessage(`Đã chọn video từ máy tính: ${res.name}`)
       }
     } else {
       alert('Vui lòng chọn từ thư viện mẫu hoặc nhập URL video khi chạy trên trình duyệt!')
@@ -230,7 +231,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
       <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/70">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/80">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
               <Clock className="w-4 h-4" />
@@ -256,21 +257,21 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Tên nhiệm vụ / Việc cần nhắc *
+                Tiêu đề nhắc hẹn / Tên nhiệm vụ *
               </label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="VD: Uống nước, Tập thể dục, Học tiếng Anh, Họp dự án..."
+                placeholder="VD: Đến giờ ăn tối, Uống nước, Tập thể dục, Họp dự án..."
                 className="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm font-medium"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Giờ nhắc hẹn *
+                Thời gian reo *
               </label>
               <input
                 type="time"
@@ -282,56 +283,76 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             </div>
           </div>
 
-          {/* AI Video Quick Action Banner */}
-          <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-slate-900 border border-indigo-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4 animate-pulse" />
+          {/* AI SMART VIDEO GENERATOR & MATCHER BUTTONS - PROMINENT SECTION */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-950 via-purple-950/80 to-slate-900 border-2 border-indigo-500/50 shadow-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-indigo-300 font-extrabold text-xs uppercase tracking-wider">
+                <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
+                <span>Nút Tự Động Quét & Tạo Video AI Cho Nhiệm Vụ Này</span>
               </div>
-              <div className="text-left">
-                <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <span>Trợ Lý Video AI Tự Động (5-10s)</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold">
-                    Mới
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-300">
-                  Tự động quét "{title || 'nhiệm vụ'}" để tạo video động hoặc tìm clip phù hợp
-                </div>
-              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
+                5-10 giây
+              </span>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <p className="text-xs text-slate-300">
+              Nhấn 1 trong 2 nút dưới đây để app tự tìm video clip có sẵn hoặc tạo ngay video đồ họa AI động 6s theo đúng tiêu đề: <strong className="text-white">"{title || 'Nhiệm vụ'}"</strong>
+            </p>
+
+            {/* 2 Big Action Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {/* Button 1: AI Motion Video */}
               <button
                 type="button"
                 onClick={handleGenerateAiVideo}
                 disabled={isGeneratingAi}
-                className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 transition cursor-pointer disabled:opacity-50"
-                title="Tạo video đồ họa động 6s mang tên nhiệm vụ của bạn"
+                className="px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-black shadow-lg shadow-indigo-600/40 flex items-center justify-center gap-2 transition transform active:scale-95 cursor-pointer disabled:opacity-50"
               >
                 {isGeneratingAi ? (
                   <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Đang tạo...</span>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Đang tạo video AI 6s...</span>
                   </>
                 ) : (
                   <>
-                    <Wand2 className="w-3.5 h-3.5" />
-                    <span>Tạo Video AI (6s)</span>
+                    <Wand2 className="w-4 h-4" />
+                    <span>✨ Tạo Video AI Đồ Họa (6s)</span>
                   </>
                 )}
               </button>
 
+              {/* Button 2: Online Video Matching */}
               <button
                 type="button"
                 onClick={handleMatchOnlineVideo}
-                className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-                title="Khớp video mẫu trực tuyến 5-10s theo chủ đề nhiệm vụ"
+                className="px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 hover:from-cyan-500 hover:to-teal-500 text-white text-xs font-black shadow-lg shadow-cyan-600/40 flex items-center justify-center gap-2 transition transform active:scale-95 cursor-pointer"
               >
-                <Globe className="w-3.5 h-3.5" />
-                <span>Tìm Clip Mạng</span>
+                <Globe className="w-4 h-4" />
+                <span>🌐 Tự Tìm Clip Mạng Phù Hợp (8s)</span>
               </button>
             </div>
+
+            {/* Success notification */}
+            {aiSuccessMessage && (
+              <div className="p-2.5 rounded-lg bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+                <Check className="w-4 h-4 text-emerald-400" />
+                <span>{aiSuccessMessage}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Ghi chú thêm */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              Ghi chú nội dung (Tùy chọn)
+            </label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="VD: Nhớ mang theo sổ tay, uống 1 cốc nước ấm..."
+              className="w-full px-3.5 py-2 rounded-xl glass-input text-sm"
+            />
           </div>
 
           {/* Video Preview & Source Selector */}
@@ -339,7 +360,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Video className="w-3.5 h-3.5" />
-                <span>Video Phát Khi Chuông Reo (5-10s)</span>
+                <span>Video Đã Chọn & Xem Trước</span>
               </label>
 
               {/* Source Tabs */}
@@ -384,7 +405,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 
             {/* Video Live Preview Player */}
             {videoUrl && (
-              <div className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-black aspect-video max-h-48 flex items-center justify-center group shadow-inner">
+              <div className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-black aspect-video max-h-52 flex items-center justify-center group shadow-inner">
                 <video
                   ref={previewVideoRef}
                   src={videoType === 'local' ? `media:///${encodeURIComponent(videoUrl.replace(/\\/g, '/'))}` : videoUrl}
@@ -407,7 +428,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                 </div>
 
                 <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none px-1">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-black/70 backdrop-blur text-cyan-300 border border-cyan-500/30 truncate max-w-[250px]">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-black/70 backdrop-blur text-cyan-300 border border-cyan-500/30 truncate max-w-[280px]">
                     {videoName || 'Video đã chọn'}
                   </span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-black/70 backdrop-blur text-emerald-400">
@@ -428,7 +449,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                       onClick={() => {
                         setVideoUrl(v.url)
                         setVideoName(v.title)
-                        setAiVideoInfo(null)
+                        setAiSuccessMessage(null)
                       }}
                       className={`relative rounded-xl overflow-hidden border p-2 flex items-center gap-2.5 cursor-pointer transition ${
                         isSelected

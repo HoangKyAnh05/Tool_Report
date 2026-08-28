@@ -48,13 +48,24 @@ const CURATED_TASK_VIDEOS: Record<string, { url: string; thumbnail: string; titl
     url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
     thumbnail: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&auto=format&fit=crop&q=60',
   },
+  sleep: {
+    title: 'Đi ngủ & Nghỉ ngơi (5-10s)',
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+    thumbnail: 'https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=500&auto=format&fit=crop&q=60',
+  },
 }
 
 // 1. Analyze task title and match keyword
 export function analyzeTaskCategory(taskTitle: string): string {
   const lower = taskTitle.toLowerCase()
 
-  if (/tập|thể dục|vận động|giãn cơ|gym|chạy|workout|yoga|đứng dậy|vươn vai/.test(lower)) {
+  if (/ăn|cơm|bữa|tối|trưa|sáng|nấu|food|dinner|lunch|breakfast|cà phê|coffee|trà/.test(lower)) {
+    return 'meal'
+  }
+  if (/ngủ|nghỉ|nghỉ trưa|sleep|nap|bed|thư giãn|thiền|nhắm mắt/.test(lower)) {
+    return 'sleep'
+  }
+  if (/tập|thể dục|vận động|giãn cơ|gym|chạy|workout|yoga|đứng dậy|vươn vai|đi bộ/.test(lower)) {
     return 'exercise'
   }
   if (/uống nước|nước|bù nước|water|hydrat|khát/.test(lower)) {
@@ -63,17 +74,11 @@ export function analyzeTaskCategory(taskTitle: string): string {
   if (/học|đọc sách|ôn bài|tiếng anh|reading|study|lesson|sách|bài tập/.test(lower)) {
     return 'study'
   }
-  if (/ngủ|nghỉ|thư giãn|thiền|nhắm mắt|nghỉ trưa|relax|sleep|nap/.test(lower)) {
-    return 'relax'
-  }
-  if (/code|lập trình|dev|fix bug|python|javascript|viết code|debug/.test(lower)) {
+  if (/code|lập trình|dev|fix bug|python|javascript|viết code|debug|it/.test(lower)) {
     return 'coding'
   }
-  if (/họp|meeting|gặp|báo cáo|thảo luận|khách hàng|trao đổi/.test(lower)) {
+  if (/họp|meeting|gặp|báo cáo|thảo luận|khách hàng|trao đổi|call/.test(lower)) {
     return 'meeting'
-  }
-  if (/ăn|cơm|bữa trưa|bữa tối|nấu|food|dinner|lunch|breakfast|uống cà phê|coffee/.test(lower)) {
-    return 'meal'
   }
   return 'exercise'
 }
@@ -85,7 +90,7 @@ export function findMatchingOnlineVideo(taskTitle: string): AiMatchedVideo {
 
   return {
     id: `matched_${category}_${Date.now()}`,
-    title: `${matched.title} - "${taskTitle}"`,
+    title: `${matched.title} (Khớp cho: "${taskTitle}")`,
     url: matched.url,
     thumbnail: matched.thumbnail,
     duration: 8,
@@ -128,8 +133,6 @@ export async function generateAiDynamicVideo(taskTitle: string): Promise<AiMatch
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: mimeType })
         const videoUrl = URL.createObjectURL(blob)
-
-        // Capture a thumbnail from canvas
         const thumbnail = canvas.toDataURL('image/jpeg', 0.8)
 
         resolve({
@@ -161,6 +164,7 @@ export async function generateAiDynamicVideo(taskTitle: string): Promise<AiMatch
         coding: { bg1: '#0f172a', bg2: '#020617', accent: '#22c55e', icon: '💻' },
         meeting: { bg1: '#be123c', bg2: '#1f1319', accent: '#fb7185', icon: '👥' },
         meal: { bg1: '#ea580c', bg2: '#270e04', accent: '#fb923c', icon: '🍱' },
+        sleep: { bg1: '#312e81', bg2: '#030712', accent: '#818cf8', icon: '🌙' },
       }
 
       const colors = colorPalettes[category] || colorPalettes['exercise']
@@ -188,8 +192,8 @@ export async function generateAiDynamicVideo(taskTitle: string): Promise<AiMatch
         ctx!.fillStyle = bgGrad
         ctx!.fillRect(0, 0, width, height)
 
-        // 2. Animated floating neon circles / particles
-        for (let i = 0; i < 15; i++) {
+        // 2. Animated floating neon particles
+        for (let i = 0; i < 16; i++) {
           const px = (width * 0.1 * i + Math.sin(t + i) * 60) % width
           const py = (height * 0.15 * i + Math.cos(t * 1.3 + i) * 50 + (i % 2 === 0 ? t * 30 : -t * 20)) % height
           const radius = 20 + (i % 5) * 12 + Math.sin(t * 3 + i) * 10
@@ -201,7 +205,7 @@ export async function generateAiDynamicVideo(taskTitle: string): Promise<AiMatch
         }
 
         // 3. Central pulsing glow card
-        const cardW = 900
+        const cardW = 920
         const cardH = 460
         const cardX = (width - cardW) / 2
         const cardY = (height - cardH) / 2
@@ -209,11 +213,10 @@ export async function generateAiDynamicVideo(taskTitle: string): Promise<AiMatch
         ctx!.save()
         ctx!.shadowColor = colors.accent
         ctx!.shadowBlur = 40 + Math.sin(t * 4) * 15
-        ctx!.fillStyle = 'rgba(15, 23, 42, 0.85)'
+        ctx!.fillStyle = 'rgba(15, 23, 42, 0.88)'
         ctx!.strokeStyle = colors.accent
         ctx!.lineWidth = 3
 
-        // Rounded rect for central card
         ctx!.beginPath()
         ctx!.roundRect(cardX, cardY, cardW, cardH, 28)
         ctx!.fill()
@@ -221,34 +224,33 @@ export async function generateAiDynamicVideo(taskTitle: string): Promise<AiMatch
         ctx!.restore()
 
         // 4. Category Emoji / Icon
-        ctx!.font = '72px sans-serif'
+        ctx!.font = '76px sans-serif'
         ctx!.textAlign = 'center'
         ctx!.textBaseline = 'middle'
-        const iconY = cardY + 90 + Math.sin(t * 3) * 8
+        const iconY = cardY + 95 + Math.sin(t * 3) * 8
         ctx!.fillText(colors.icon, width / 2, iconY)
 
         // 5. Header Tag
         ctx!.font = 'bold 24px "Plus Jakarta Sans", sans-serif'
         ctx!.fillStyle = colors.accent
-        ctx!.fillText('⏰ ĐẾN GIỜ NHẮC HẸN CỦA BẠN', width / 2, cardY + 170)
+        ctx!.fillText('⏰ ĐẾN GIỜ NHẮC HẸN', width / 2, cardY + 175)
 
         // 6. User Task Title
         ctx!.font = 'bold 44px "Plus Jakarta Sans", sans-serif'
         ctx!.fillStyle = '#ffffff'
-        // Truncate if too long
         let displayTitle = taskTitle
-        if (displayTitle.length > 35) {
-          displayTitle = displayTitle.slice(0, 32) + '...'
+        if (displayTitle.length > 32) {
+          displayTitle = displayTitle.slice(0, 30) + '...'
         }
-        ctx!.fillText(displayTitle, width / 2, cardY + 240)
+        ctx!.fillText(displayTitle, width / 2, cardY + 245)
 
         // 7. Dynamic Equalizer Wave Bars
-        const barCount = 24
+        const barCount = 26
         const barWidth = 12
         const barGap = 8
         const totalWaveWidth = barCount * (barWidth + barGap)
         const waveStartX = (width - totalWaveWidth) / 2
-        const waveCenterY = cardY + 330
+        const waveCenterY = cardY + 335
 
         for (let b = 0; b < barCount; b++) {
           const barHeight = 15 + Math.abs(Math.sin(t * 6 + b * 0.4)) * 50
@@ -261,16 +263,16 @@ export async function generateAiDynamicVideo(taskTitle: string): Promise<AiMatch
           ctx!.fill()
         }
 
-        // 8. Bottom Progress bar (shows 6-second countdown)
+        // 8. Bottom Progress bar
         const progressW = (cardW - 80) * progress
-        ctx!.fillStyle = 'rgba(255, 255, 255, 0.1)'
+        ctx!.fillStyle = 'rgba(255, 255, 255, 0.12)'
         ctx!.beginPath()
-        ctx!.roundRect(cardX + 40, cardY + 395, cardW - 80, 10, 5)
+        ctx!.roundRect(cardX + 40, cardY + 400, cardW - 80, 10, 5)
         ctx!.fill()
 
         ctx!.fillStyle = colors.accent
         ctx!.beginPath()
-        ctx!.roundRect(cardX + 40, cardY + 395, Math.max(10, progressW), 10, 5)
+        ctx!.roundRect(cardX + 40, cardY + 400, Math.max(10, progressW), 10, 5)
         ctx!.fill()
 
         currentFrame++
