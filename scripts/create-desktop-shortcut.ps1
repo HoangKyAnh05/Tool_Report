@@ -27,7 +27,7 @@ foreach ($Desktop in $DesktopLocations) {
     if (Test-Path $ElectronExe) {
         # Native GUI app - starts instantly with NO terminal window
         $Shortcut.TargetPath = "$ElectronExe"
-        $Shortcut.Arguments = "."
+        $Shortcut.Arguments = "`"$ProjectRoot`""
     } else {
         $Shortcut.TargetPath = "wscript.exe"
         $Shortcut.Arguments = "`"$VbsPath`""

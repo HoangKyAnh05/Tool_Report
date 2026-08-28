@@ -9,5 +9,5 @@ echo [2/3] Dang cap nhat ban build moi nhat...
 call npm run build
 
 echo [3/3] Dang khoi chay Video Reminder...
-start "" "node_modules\electron\dist\electron.exe" "%~dp0."
+start "" "%~dp0node_modules\electron\dist\electron.exe" "%~dp0"
 exit

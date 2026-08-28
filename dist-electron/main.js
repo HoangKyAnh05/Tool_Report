@@ -6,16 +6,19 @@ import p, { fileURLToPath as m } from "node:url";
 //#region electron/main.ts
 var h = m(import.meta.url), g = u.dirname(h);
 r.name = "VideoReminderApp";
+var _ = "";
 try {
-	let e = r.getPath("appData");
-	r.setPath("userData", u.join(e, "VideoReminderApp"));
+	let e = r.getPath("appData"), t = u.join(e, "VideoReminderApp");
+	r.setPath("userData", t), d.existsSync(t) || d.mkdirSync(t, { recursive: !0 }), _ = u.join(t, "app.log"), d.appendFileSync(_, `\n[${(/* @__PURE__ */ new Date()).toISOString()}] === Electron Started ===\n`);
 } catch (e) {
 	console.warn("Set userData path error:", e);
 }
-r.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
-var _ = null, v = null, y = !1;
+process.on("uncaughtException", (e) => {
+	_ && d.appendFileSync(_, `[UNCAUGHT EXCEPTION] ${e?.stack || e}\n`);
+}), r.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+var v = null, y = null, b = !1;
 process.env.NODE_ENV === "development" || r.isPackaged;
-function b() {
+function x() {
 	c.handle("media", (e) => {
 		try {
 			let t = decodeURIComponent(e.url.replace("media:///", "").replace("media://", ""));
@@ -25,16 +28,16 @@ function b() {
 		}
 	});
 }
-function x() {
+function S() {
 	try {
 		return o.createFromBuffer(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkoBAwUqifYdQAkGNYmJl/Y5OMxafpPzYDKDYY4gOMjIwM6G4AmwE4DRkAbU0HCEb+7vUAAAAASUVORK5CYII=", "base64"));
 	} catch {
 		return o.createEmpty();
 	}
 }
-function S() {
+function C() {
 	let t = u.join(g, "preload.cjs");
-	_ = new e({
+	v = new e({
 		width: 1050,
 		height: 720,
 		minWidth: 800,
@@ -50,34 +53,38 @@ function S() {
 			contextIsolation: !0,
 			webSecurity: !1
 		}
-	}), _.on("page-title-updated", (e) => e.preventDefault()), _.webContents.session.clearCache().catch(() => {}), process.env.VITE_DEV_SERVER_URL ? _.loadURL(process.env.VITE_DEV_SERVER_URL) : _.loadFile(u.join(g, "../dist/index.html")), _.webContents.on("before-input-event", (e, t) => {
-		(t.key === "F5" || t.control && t.key.toLowerCase() === "r") && _?.webContents.reloadIgnoringCache();
-	}), _.webContents.setWindowOpenHandler(({ url: e }) => ((e.startsWith("http://") || e.startsWith("https://")) && l.openExternal(e), { action: "deny" })), _.once("ready-to-show", () => {
-		_?.show(), _?.focus();
+	}), v.on("page-title-updated", (e) => e.preventDefault()), v.webContents.session.clearCache().catch(() => {}), process.env.VITE_DEV_SERVER_URL ? v.loadURL(process.env.VITE_DEV_SERVER_URL) : v.loadFile(u.join(g, "../dist/index.html")), v.webContents.on("before-input-event", (e, t) => {
+		(t.key === "F5" || t.control && t.key.toLowerCase() === "r") && v?.webContents.reloadIgnoringCache();
+	}), v.webContents.on("console-message", (e, t, n, r, i) => {
+		_ && d.appendFileSync(_, `[RENDERER CONSOLE ${t}] ${n} (${i}:${r})\n`);
+	}), v.webContents.on("did-finish-load", () => {
+		_ && d.appendFileSync(_, "[mainWindow did-finish-load] successfully loaded!\n");
+	}), v.webContents.setWindowOpenHandler(({ url: e }) => ((e.startsWith("http://") || e.startsWith("https://")) && l.openExternal(e), { action: "deny" })), v.once("ready-to-show", () => {
+		v?.show(), v?.focus();
 	}), setTimeout(() => {
-		_ && !_.isVisible() && (_.show(), _.focus());
-	}, 500), _.on("close", (e) => {
-		y || (e.preventDefault(), _?.hide(), v && v.displayBalloon?.({
+		v && !v.isVisible() && (v.show(), v.focus());
+	}, 500), v.on("close", (e) => {
+		b || (e.preventDefault(), v?.hide(), y && y.displayBalloon?.({
 			title: "Video Reminder",
 			content: "Ứng dụng đang chạy ngầm trong khay hệ thống để tiếp tục theo dõi lịch nhắc hẹn."
 		}));
 	});
 }
-function C() {
+function w() {
 	try {
-		let e = x();
-		v = new n(e), v.setToolTip("Video Reminder - Đang chạy ngầm");
+		let e = S();
+		y = new n(e), y.setToolTip("Video Reminder - Đang chạy ngầm");
 		let i = t.buildFromTemplate([
 			{
 				label: "⏰ Mở Video Reminder",
 				click: () => {
-					_ && (_.show(), _.focus());
+					v && (v.show(), v.focus());
 				}
 			},
 			{
 				label: "🔄 Tải lại ứng dụng (Reload)",
 				click: () => {
-					_ && _.webContents.reloadIgnoringCache();
+					v && v.webContents.reloadIgnoringCache();
 				}
 			},
 			{
@@ -90,7 +97,7 @@ function C() {
 			{
 				label: "🔔 Kích hoạt thử chuông báo",
 				click: () => {
-					_ && (_.show(), _.webContents.send("alarm:test-trigger"));
+					v && (v.show(), v.webContents.send("alarm:test-trigger"));
 				}
 			},
 			{
@@ -103,31 +110,31 @@ function C() {
 			{
 				label: "❌ Thoát ứng dụng hoàn toàn",
 				click: () => {
-					y = !0, r.quit();
+					b = !0, r.quit();
 				}
 			}
 		]);
-		v.setContextMenu(i), v.on("double-click", () => {
-			_ && (_.isVisible() ? _.hide() : (_.show(), _.focus()));
+		y.setContextMenu(i), y.on("double-click", () => {
+			v && (v.isVisible() ? v.hide() : (v.show(), v.focus()));
 		});
 	} catch (e) {
 		console.warn("System tray setup warning:", e);
 	}
 }
-function w() {
+function T() {
 	a.handle("app:restart", () => {
 		r.relaunch(), r.exit(0);
-	}), a.handle("app:reload", () => (_ && _.webContents.reloadIgnoringCache(), !0)), a.handle("window:minimize", () => {
-		_?.minimize();
+	}), a.handle("app:reload", () => (v && v.webContents.reloadIgnoringCache(), !0)), a.handle("window:minimize", () => {
+		v?.minimize();
 	}), a.handle("window:maximize", () => {
-		_?.isMaximized() ? _.unmaximize() : _?.maximize();
+		v?.isMaximized() ? v.unmaximize() : v?.maximize();
 	}), a.handle("window:hide-to-tray", () => {
-		_?.hide();
+		v?.hide();
 	}), a.handle("window:close", () => {
-		_?.hide();
+		v?.hide();
 	}), a.handle("window:quit", () => {
-		y = !0, r.quit();
-	}), a.handle("alarm:wake-up", (e, { autoFullscreen: t }) => (_ && (_.isMinimized() && _.restore(), _.show(), _.setAlwaysOnTop(!0, "screen-saver"), _.focus(), _.flashFrame(!0), t && !_.isFullScreen() && _.setFullScreen(!0)), !0)), a.handle("alarm:dismiss", () => (_ && (_.setAlwaysOnTop(!1), _.flashFrame(!1), _.isFullScreen() && _.setFullScreen(!1)), !0)), a.handle("video:cache-remote", async (e, t) => {
+		b = !0, r.quit();
+	}), a.handle("alarm:wake-up", (e, { autoFullscreen: t }) => (v && (v.isMinimized() && v.restore(), v.show(), v.setAlwaysOnTop(!0, "screen-saver"), v.focus(), v.flashFrame(!0), t && !v.isFullScreen() && v.setFullScreen(!0)), !0)), a.handle("alarm:dismiss", () => (v && (v.setAlwaysOnTop(!1), v.flashFrame(!1), v.isFullScreen() && v.setFullScreen(!1)), !0)), a.handle("video:cache-remote", async (e, t) => {
 		try {
 			if (!t || !t.startsWith("http")) return t;
 			let e = u.join(r.getPath("userData"), "cached_videos");
@@ -145,8 +152,8 @@ function w() {
 			return console.error("Error caching remote video:", e), t;
 		}
 	}), a.handle("dialog:open-video", async () => {
-		if (!_) return null;
-		let e = await i.showOpenDialog(_, {
+		if (!v) return null;
+		let e = await i.showOpenDialog(v, {
 			title: "Chọn file video nhắc hẹn",
 			properties: ["openFile"],
 			filters: [{
@@ -174,16 +181,40 @@ function w() {
 		return null;
 	}), a.handle("shell:open-external", (e, t) => t && (t.startsWith("http://") || t.startsWith("https://")) ? (l.openExternal(t), !0) : !1), a.handle("app:is-packaged", () => r.isPackaged);
 }
-r.requestSingleInstanceLock() ? (r.on("second-instance", () => {
-	_ && (_.isMinimized() && _.restore(), _.show(), _.focus());
+var E = r.requestSingleInstanceLock();
+_ && d.appendFileSync(_, `Got lock: ${E}\n`), E ? (r.on("second-instance", () => {
+	_ && d.appendFileSync(_, "Second instance triggered, restoring window.\n"), v && (v.isMinimized() && v.restore(), v.show(), v.focus());
 }), r.whenReady().then(() => {
-	b(), w(), S(), C(), r.on("activate", () => {
-		e.getAllWindows().length === 0 && S();
+	_ && d.appendFileSync(_, "app.whenReady() fired!\n");
+	try {
+		x(), _ && d.appendFileSync(_, "[1] registerMediaProtocol done\n");
+	} catch (e) {
+		_ && d.appendFileSync(_, `[ERR 1] ${e?.stack || e}\n`);
+	}
+	try {
+		T(), _ && d.appendFileSync(_, "[2] setupIPC done\n");
+	} catch (e) {
+		_ && d.appendFileSync(_, `[ERR 2] ${e?.stack || e}\n`);
+	}
+	try {
+		C(), _ && d.appendFileSync(_, "[3] createMainWindow done\n");
+	} catch (e) {
+		_ && d.appendFileSync(_, `[ERR 3] ${e?.stack || e}\n`);
+	}
+	try {
+		w(), _ && d.appendFileSync(_, "[4] setupSystemTray done\n");
+	} catch (e) {
+		_ && d.appendFileSync(_, `[ERR 4] ${e?.stack || e}\n`);
+	}
+	r.on("activate", () => {
+		e.getAllWindows().length === 0 && C();
 	});
 }), r.on("window-all-closed", () => {
-	process.platform !== "darwin" && y && r.quit();
+	_ && d.appendFileSync(_, `[window-all-closed] isQuitting=${b}\n`), process.platform !== "darwin" && b && r.quit();
 }), r.on("before-quit", () => {
-	y = !0;
-})) : r.quit();
+	_ && d.appendFileSync(_, "[before-quit] fired\n"), b = !0;
+}), r.on("will-quit", () => {
+	_ && d.appendFileSync(_, "[will-quit] fired\n");
+})) : (_ && d.appendFileSync(_, "Quitting because single instance lock not acquired.\n"), r.quit());
 //#endregion
 export {};

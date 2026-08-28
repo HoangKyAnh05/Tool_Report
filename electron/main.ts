@@ -9,12 +9,25 @@ const __dirname = path.dirname(__filename)
 
 // Set app name & isolate userData path to avoid collision with other electron projects
 app.name = 'VideoReminderApp'
+let logFile = ''
 try {
   const appData = app.getPath('appData')
-  app.setPath('userData', path.join(appData, 'VideoReminderApp'))
+  const userDataDir = path.join(appData, 'VideoReminderApp')
+  app.setPath('userData', userDataDir)
+  if (!fs.existsSync(userDataDir)) {
+    fs.mkdirSync(userDataDir, { recursive: true })
+  }
+  logFile = path.join(userDataDir, 'app.log')
+  fs.appendFileSync(logFile, `\n[${new Date().toISOString()}] === Electron Started ===\n`)
 } catch (e) {
   console.warn('Set userData path error:', e)
 }
+
+process.on('uncaughtException', (err) => {
+  if (logFile) {
+    fs.appendFileSync(logFile, `[UNCAUGHT EXCEPTION] ${err?.stack || err}\n`)
+  }
+})
 
 // Disable GPU acceleration if necessary or enable hardware video decoding
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
@@ -89,6 +102,13 @@ function createMainWindow() {
     if (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r')) {
       mainWindow?.webContents.reloadIgnoringCache()
     }
+  })
+
+  mainWindow.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+    if (logFile) fs.appendFileSync(logFile, `[RENDERER CONSOLE ${level}] ${message} (${sourceId}:${line})\n`)
+  })
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (logFile) fs.appendFileSync(logFile, `[mainWindow did-finish-load] successfully loaded!\n`)
   })
 
   // Handle external links to open in default browser
@@ -357,11 +377,14 @@ function setupIPC() {
 
 // Single instance lock
 const gotTheLock = app.requestSingleInstanceLock()
+if (logFile) fs.appendFileSync(logFile, `Got lock: ${gotTheLock}\n`)
 
 if (!gotTheLock) {
+  if (logFile) fs.appendFileSync(logFile, `Quitting because single instance lock not acquired.\n`)
   app.quit()
 } else {
   app.on('second-instance', () => {
+    if (logFile) fs.appendFileSync(logFile, `Second instance triggered, restoring window.\n`)
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.show()
@@ -370,10 +393,35 @@ if (!gotTheLock) {
   })
 
   app.whenReady().then(() => {
-    registerMediaProtocol()
-    setupIPC()
-    createMainWindow()
-    setupSystemTray()
+    if (logFile) fs.appendFileSync(logFile, `app.whenReady() fired!\n`)
+    
+    try {
+      registerMediaProtocol()
+      if (logFile) fs.appendFileSync(logFile, `[1] registerMediaProtocol done\n`)
+    } catch (e: any) {
+      if (logFile) fs.appendFileSync(logFile, `[ERR 1] ${e?.stack || e}\n`)
+    }
+
+    try {
+      setupIPC()
+      if (logFile) fs.appendFileSync(logFile, `[2] setupIPC done\n`)
+    } catch (e: any) {
+      if (logFile) fs.appendFileSync(logFile, `[ERR 2] ${e?.stack || e}\n`)
+    }
+
+    try {
+      createMainWindow()
+      if (logFile) fs.appendFileSync(logFile, `[3] createMainWindow done\n`)
+    } catch (e: any) {
+      if (logFile) fs.appendFileSync(logFile, `[ERR 3] ${e?.stack || e}\n`)
+    }
+
+    try {
+      setupSystemTray()
+      if (logFile) fs.appendFileSync(logFile, `[4] setupSystemTray done\n`)
+    } catch (e: any) {
+      if (logFile) fs.appendFileSync(logFile, `[ERR 4] ${e?.stack || e}\n`)
+    }
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -383,12 +431,18 @@ if (!gotTheLock) {
   })
 
   app.on('window-all-closed', () => {
+    if (logFile) fs.appendFileSync(logFile, `[window-all-closed] isQuitting=${isQuitting}\n`)
     if (process.platform !== 'darwin' && isQuitting) {
       app.quit()
     }
   })
 
   app.on('before-quit', () => {
+    if (logFile) fs.appendFileSync(logFile, `[before-quit] fired\n`)
     isQuitting = true
+  })
+
+  app.on('will-quit', () => {
+    if (logFile) fs.appendFileSync(logFile, `[will-quit] fired\n`)
   })
 }
