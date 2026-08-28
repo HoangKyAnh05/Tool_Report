@@ -7,8 +7,8 @@ import url, { fileURLToPath } from 'node:url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Set app name & isolate userData path to avoid collision with other electron projects
-app.name = 'VideoReminderApp'
+// Set app name matching package.json
+app.name = 'video-reminder-app'
 let logFile = ''
 try {
   const appData = app.getPath('appData')
@@ -53,9 +53,13 @@ function registerMediaProtocol() {
   })
 }
 
-// Generate simple 16x16 PNG tray icon (bell cyan)
+// Generate valid icon for tray
 function createTrayIcon(): Electron.NativeImage {
   try {
+    const icoPath = path.join(__dirname, '../icon.ico')
+    if (fs.existsSync(icoPath)) {
+      return nativeImage.createFromPath(icoPath)
+    }
     const pngBase64 =
       'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkoBAwUqifYdQAkGNYmJl/Y5OMxafpPzYDKDYY4gOMjIwM6G4AmwE4DRkAbU0HCEb+7vUAAAAASUVORK5CYII='
     const img = nativeImage.createFromBuffer(Buffer.from(pngBase64, 'base64'))
@@ -67,6 +71,7 @@ function createTrayIcon(): Electron.NativeImage {
 
 function createMainWindow() {
   const preloadPath = path.join(__dirname, 'preload.cjs')
+  const iconPath = path.join(__dirname, '../icon.ico')
 
   mainWindow = new BrowserWindow({
     width: 1050,
@@ -75,6 +80,7 @@ function createMainWindow() {
     minHeight: 580,
     title: 'Video Reminder - Nhắc Hẹn & Báo Thức Video',
     backgroundColor: '#030712',
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     frame: false, // Custom frameless window
     show: true, // Show immediately on launch
     center: true,
@@ -375,25 +381,9 @@ function setupIPC() {
   })
 }
 
-// Single instance lock
-const gotTheLock = app.requestSingleInstanceLock()
-if (logFile) fs.appendFileSync(logFile, `Got lock: ${gotTheLock}\n`)
-
-if (!gotTheLock) {
-  if (logFile) fs.appendFileSync(logFile, `Quitting because single instance lock not acquired.\n`)
-  app.quit()
-} else {
-  app.on('second-instance', () => {
-    if (logFile) fs.appendFileSync(logFile, `Second instance triggered, restoring window.\n`)
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.show()
-      mainWindow.focus()
-    }
-  })
-
-  app.whenReady().then(() => {
-    if (logFile) fs.appendFileSync(logFile, `app.whenReady() fired!\n`)
+// Initialize application directly
+app.whenReady().then(() => {
+  if (logFile) fs.appendFileSync(logFile, `app.whenReady() fired!\n`)
     
     try {
       registerMediaProtocol()
@@ -445,4 +435,3 @@ if (!gotTheLock) {
   app.on('will-quit', () => {
     if (logFile) fs.appendFileSync(logFile, `[will-quit] fired\n`)
   })
-}

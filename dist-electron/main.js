@@ -5,7 +5,7 @@ import f from "node:crypto";
 import p, { fileURLToPath as m } from "node:url";
 //#region electron/main.ts
 var h = m(import.meta.url), g = u.dirname(h);
-r.name = "VideoReminderApp";
+r.name = "video-reminder-app";
 var _ = "";
 try {
 	let e = r.getPath("appData"), t = u.join(e, "VideoReminderApp");
@@ -30,13 +30,14 @@ function x() {
 }
 function S() {
 	try {
-		return o.createFromBuffer(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkoBAwUqifYdQAkGNYmJl/Y5OMxafpPzYDKDYY4gOMjIwM6G4AmwE4DRkAbU0HCEb+7vUAAAAASUVORK5CYII=", "base64"));
+		let e = u.join(g, "../icon.ico");
+		return d.existsSync(e) ? o.createFromPath(e) : o.createFromBuffer(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkoBAwUqifYdQAkGNYmJl/Y5OMxafpPzYDKDYY4gOMjIwM6G4AmwE4DRkAbU0HCEb+7vUAAAAASUVORK5CYII=", "base64"));
 	} catch {
 		return o.createEmpty();
 	}
 }
 function C() {
-	let t = u.join(g, "preload.cjs");
+	let t = u.join(g, "preload.cjs"), n = u.join(g, "../icon.ico");
 	v = new e({
 		width: 1050,
 		height: 720,
@@ -44,6 +45,7 @@ function C() {
 		minHeight: 580,
 		title: "Video Reminder - Nhắc Hẹn & Báo Thức Video",
 		backgroundColor: "#030712",
+		icon: d.existsSync(n) ? n : void 0,
 		frame: !1,
 		show: !0,
 		center: !0,
@@ -181,10 +183,7 @@ function T() {
 		return null;
 	}), a.handle("shell:open-external", (e, t) => t && (t.startsWith("http://") || t.startsWith("https://")) ? (l.openExternal(t), !0) : !1), a.handle("app:is-packaged", () => r.isPackaged);
 }
-var E = r.requestSingleInstanceLock();
-_ && d.appendFileSync(_, `Got lock: ${E}\n`), E ? (r.on("second-instance", () => {
-	_ && d.appendFileSync(_, "Second instance triggered, restoring window.\n"), v && (v.isMinimized() && v.restore(), v.show(), v.focus());
-}), r.whenReady().then(() => {
+r.whenReady().then(() => {
 	_ && d.appendFileSync(_, "app.whenReady() fired!\n");
 	try {
 		x(), _ && d.appendFileSync(_, "[1] registerMediaProtocol done\n");
@@ -215,6 +214,6 @@ _ && d.appendFileSync(_, `Got lock: ${E}\n`), E ? (r.on("second-instance", () =>
 	_ && d.appendFileSync(_, "[before-quit] fired\n"), b = !0;
 }), r.on("will-quit", () => {
 	_ && d.appendFileSync(_, "[will-quit] fired\n");
-})) : (_ && d.appendFileSync(_, "Quitting because single instance lock not acquired.\n"), r.quit());
+});
 //#endregion
 export {};

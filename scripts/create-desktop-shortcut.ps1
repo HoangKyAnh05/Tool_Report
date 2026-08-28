@@ -23,19 +23,13 @@ $WshShell = New-Object -ComObject WScript.Shell
 foreach ($Desktop in $DesktopLocations) {
     $ShortcutPath = Join-Path $Desktop "Video Reminder.lnk"
     
+    $LauncherVbs = Join-Path $ProjectRoot "scripts\launcher.vbs"
     $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
-    if (Test-Path $ElectronExe) {
-        # Native GUI app - starts instantly with NO terminal window
-        $Shortcut.TargetPath = "$ElectronExe"
-        $Shortcut.Arguments = "`"$ProjectRoot`""
-    } else {
-        $Shortcut.TargetPath = "wscript.exe"
-        $Shortcut.Arguments = "`"$VbsPath`""
-    }
-    
+    $Shortcut.TargetPath = "wscript.exe"
+    $Shortcut.Arguments = "`"$LauncherVbs`""
     $Shortcut.WorkingDirectory = "$ProjectRoot"
     $Shortcut.Description = "Video Reminder - Ứng dụng Nhắc Hẹn & Báo Thức Phát Video Chạy Ngầm"
-    $Shortcut.IconLocation = "shell32.dll,239" # Alarm / Bell icon
+    $Shortcut.IconLocation = "$ProjectRoot\icon.ico"
     $Shortcut.WindowStyle = 1 # Normal Window
     $Shortcut.Save()
 
